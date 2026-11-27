@@ -113,9 +113,9 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  Column(Modifier.fillMaxWidth().padding(vertical=5.dp)){Text(label,fontSize=13.sp,fontWeight=FontWeight.SemiBold);OutlinedTextField(value,onChange,modifier=Modifier.fillMaxWidth(),minLines=if(multi)3 else 1)}
 }
 @Composable private fun RecordList(modifier:Modifier,title:String,list:List<IniRecord>,onSelect:(IniRecord)->Unit){
- var search by remember{mutableStateOf("")}
- val filtered=list.filter{search.isBlank()||it.location.contains(search,true)||it.description.contains(search,true)||it.fromPerson.contains(search,true)||it.toPerson.contains(search,true)||it.type.contains(search,true)||it.status.contains(search,true)}
- Column(modifier.fillMaxSize().padding(14.dp)){Text(title,fontSize=24.sp,fontWeight=FontWeight.Bold,color=Navy);OutlinedTextField(search,{search=it},modifier=Modifier.fillMaxWidth(),label={Text("Pesquisar local, descrição, responsável ou status")},leadingIcon={Icon(Icons.Default.Search,null)});if(filtered.isEmpty())Text("Nenhum registro encontrado.",Modifier.padding(12.dp),color=Color.Gray)
+ var search by remember{mutableStateOf("")};var dateFilter by remember{mutableStateOf("")}
+ val filtered=list.filter{(dateFilter.isBlank()||it.date==dateFilter)&&(search.isBlank()||it.location.contains(search,true)||it.description.contains(search,true)||it.fromPerson.contains(search,true)||it.toPerson.contains(search,true)||it.type.contains(search,true)||it.status.contains(search,true)}
+ Column(modifier.fillMaxSize().padding(14.dp)){Text(title,fontSize=24.sp,fontWeight=FontWeight.Bold,color=Navy);OutlinedTextField(search,{search=it},modifier=Modifier.fillMaxWidth(),label={Text("Pesquisar local, descrição, pessoa ou status")},leadingIcon={Icon(Icons.Default.Search,null)});OutlinedTextField(dateFilter,{dateFilter=it},modifier=Modifier.fillMaxWidth(),label={Text("Filtro por data (dd/MM/yyyy)")},trailingIcon={IconButton(onClick={dateFilter=""){Icon(Icons.Default.Clear,"Limpar")}});if(filtered.isEmpty())Text("Nenhum registro encontrado.",Modifier.padding(12.dp),color=Color.Gray)
  LazyColumn{items(filtered){r->Card(onClick={onSelect(r)},Modifier.fillMaxWidth().padding(vertical=5.dp)){Column(Modifier.padding(14.dp)){Text("${r.type} • ${r.status}",fontWeight=FontWeight.Bold,color=Navy);Text("${r.date} ${r.time} — ${r.location}");Text(r.description,maxLines=2);Text("Prazo: ${r.deadline.ifBlank{"—"}}",fontSize=12.sp,color=Color.Gray)}}}}}
 }
 @Composable private fun RecordDetail(modifier:Modifier,r:IniRecord,dao:RecordDao,onUpdate:(IniRecord)->Unit){
