@@ -9,6 +9,21 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.BackHandler
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.nativeCanvas
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Rect
+import android.graphics.RectF
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -41,7 +56,7 @@ class MainActivity:ComponentActivity(){
  val ctx= androidx.compose.ui.platform.LocalContext.current
  val dao=remember{RecordDatabase.get(ctx).dao()}
  val scope=rememberCoroutineScope()
- var page by remember{mutableStateOf("home")}
+ var page by remember{mutableStateOf("home")}\n BackHandler(enabled=page!="home"){page=if(page=="detail")"records" else "home";selected=null}
  var records by remember{mutableStateOf(emptyList<IniRecord>())}
  var active by remember{mutableStateOf(emptyList<IniRecord>())}
  var selected by remember{mutableStateOf<IniRecord?>(null)}
@@ -61,17 +76,17 @@ class MainActivity:ComponentActivity(){
  }
  }}
 }
-private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdições ativas";"records"->"Consultar registros";"detail"->"Detalhes / histórico";else->"Instruções"}
+private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdições ativas";"records"->"Consultar registros";"detail"->"Detalhes do registro";else->"Instruções"}
 @Composable private fun Home(m:Modifier,onNav:(String)->Unit){
  Column(m.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp),horizontalAlignment=Alignment.CenterHorizontally){
  Spacer(Modifier.height(14.dp));Icon(Icons.Default.Block,null,tint=Blue,modifier=Modifier.size(68.dp));Text("SALUM CONSTRUÇÕES",color=Navy,fontWeight=FontWeight.Bold);Text("SCL - INI",fontSize=30.sp,fontWeight=FontWeight.Bold,color=Navy);Text("Interdição • Notificação • Intervenção",color=Color.Gray)
  Spacer(Modifier.height(18.dp))
  NavCard("Novo registro","Emitir formulário digital",Icons.Default.Add,Blue){onNav("form")}
- NavCard("Interdições ativas","Acompanhar bloqueios e liberação formal",Icons.Default.Block,Color(0xFFB54735)){onNav("active")}
- NavCard("Consultar registros","Histórico e pesquisa",Icons.Default.Search,Navy){onNav("records")}
+ NavCard("Ativas","Interdições e notificações em andamento",Icons.Default.Block,Color(0xFFB54735)){onNav("active")}
+ NavCard("Consulta","Pesquisar registros e filtrar por data",Icons.Default.Search,Navy){onNav("records")}
  NavCard("Exportar dados","Gerar arquivo ZIP de registros",Icons.Default.Archive,Blue){onNav("backup")}
  NavCard("Instruções","Orientações e regras",Icons.Default.Info,Navy){onNav("help")}
- Spacer(Modifier.height(20.dp));Text("Versão 1.2.0",color=Color.Gray,fontSize=12.sp)
+ Spacer(Modifier.height(20.dp));Text("Versão 1.2.1",color=Color.Gray,fontSize=12.sp)
  }}
 @Composable private fun NavCard(t:String,s:String,i: androidx.compose.ui.graphics.vector.ImageVector,c:Color,on:()->Unit){
  Card(onClick=on,Modifier.fillMaxWidth().padding(vertical=5.dp),colors=CardDefaults.cardColors(containerColor=Color.White)){Row(Modifier.padding(15.dp),verticalAlignment=Alignment.CenterVertically){Icon(i,null,tint=c,modifier=Modifier.size(30.dp));Spacer(Modifier.width(14.dp));Column(Modifier.weight(1f)){Text(t,fontWeight=FontWeight.Bold,color=Navy);Text(s,fontSize=12.sp,color=Color.Gray)};Icon(Icons.Default.ChevronRight,null)}}
@@ -114,13 +129,13 @@ var releaseName by remember{mutableStateOf("")};var releaseManagement by remembe
  Text("${r.type} • ${r.status}",fontSize=23.sp,fontWeight=FontWeight.Bold,color=Navy);Text("${r.date} ${r.time} • ${r.location}");Text("Emitente: ${r.fromPerson} / ${r.fromCompany}");Text("Destinatário: ${r.toPerson} / ${r.toCompany}");Text("Área: ${r.areaEquipmentActivity}");Text("Severidade: ${r.severity}");Text("Descrição: ${r.description}");Text("Recomendações: ${r.recommendations}");Text("Providências: ${r.actionsTaken}");Text("Prazo: ${r.deadline}")
  Button(onClick={photoPicker.launch(arrayOf("image/*"))},modifier=Modifier.fillMaxWidth()){Text("Anexar foto/evidência")}
  if(photoUri.isNotBlank())Text("Foto selecionada: $photoUri",fontSize=12.sp,color=Color.Gray)
- Text("Status",fontWeight=FontWeight.Bold);listOf("ATIVA","AGUARDANDO VERIFICAÇÃO").filter{r.type=="Interdição"}.forEach{FilterChip(status==it,{status=it; onUpdate(r.copy(status=it,updatedAt=System.currentTimeMillis()))},label={Text(it)})}
+ Text("Status",fontWeight=FontWeight.Bold);listOf("ATIVA","LIBERADA").filter{r.type=="Interdição"&&it!="LIBERADA"}.forEach{FilterChip(status==it,{status=it; onUpdate(r.copy(status=it,updatedAt=System.currentTimeMillis()))},label={Text(it)})}
  if(r.type=="Interdição"&&r.status!="LIBERADA"){
  Text("Liberação formal",fontWeight=FontWeight.Bold,color=Color(0xFFB54735));Field("Nome do responsável pela liberação",releaseName,onChange={releaseName=it});Field("Gerência",releaseManagement,onChange={releaseManagement=it});Field("Registro de verificação / evidência",releaseSign,onChange={releaseSign=it})
  Button(onClick={if(releaseName.isNotBlank()&&releaseManagement.isNotBlank()&&releaseSign.isNotBlank()){val updated=r.copy(status="LIBERADA",releaseName=releaseName,releaseManagement=releaseManagement,releaseSignature=releaseSign,updatedAt=System.currentTimeMillis());scope.launch{dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),r.id,System.currentTimeMillis(),"LIBERAÇÃO FORMAL","Área liberada após verificação: "+releaseSign,releaseName,releaseSign))};onUpdate(updated)}},modifier=Modifier.fillMaxWidth()){Text("Confirmar liberação formal")};Text("A liberação exige nome, gerência e verificação/evidência. Não ocorre automaticamente.",fontSize=12.sp,color=Color.Gray)
  }
- Spacer(Modifier.height(10.dp));Text("Histórico",fontWeight=FontWeight.Bold,color=Navy);events.forEach{Text("• ${SimpleDateFormat("dd/MM/yyyy HH:mm",Locale("pt","BR")).format(Date(it.timestamp))} — ${it.eventType}: ${it.description} (${it.responsible})",Modifier.padding(vertical=4.dp))}
- Button(onClick={exportPdf(ctx,r,events)},modifier=Modifier.fillMaxWidth()){Text("Exportar PDF / compartilhar")}
+ Spacer(Modifier.height(10.dp))
+ Button(onClick={exportPdf(ctx,r,emptyList())},modifier=Modifier.fillMaxWidth()){Text("Exportar PDF / compartilhar")}
  }
 }
 private fun exportPdf(context:android.content.Context,r:IniRecord,events:List<RecordEvent>){
