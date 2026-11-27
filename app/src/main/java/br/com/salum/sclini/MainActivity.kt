@@ -52,7 +52,9 @@ import java.util.UUID
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
+private fun dateFromPickerMillis(millis:Long):String { val fmt=SimpleDateFormat("dd/MM/yyyy",Locale("pt","BR"));fmt.timeZone=TimeZone.getTimeZone("UTC");return fmt.format(Date(millis)) }
 private val Navy=Color(0xFF123B67); private val Blue=Color(0xFF1769AA); private val Cyan=Color(0xFF20B8CC)
 class MainActivity:ComponentActivity(){
  override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);setContent{App()}}
@@ -120,7 +122,7 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  Button(onClick={showTime=true},modifier=Modifier.fillMaxWidth()){Text("Selecionar hora: $time")}
  if(showDate){
   val ds=rememberDatePickerState()
-  DatePickerDialog(onDismissRequest={showDate=false},confirmButton={TextButton(onClick={if(ds.selectedDateMillis!=null){date=SimpleDateFormat("dd/MM/yyyy",Locale("pt","BR")).format(Date(ds.selectedDateMillis!!));showDate=false}}){Text("Confirmar")}},dismissButton={TextButton(onClick={showDate=false}){Text("Cancelar")}}){DatePicker(state=ds)}
+  DatePickerDialog(onDismissRequest={showDate=false},confirmButton={TextButton(onClick={if(ds.selectedDateMillis!=null){date=dateFromPickerMillis(ds.selectedDateMillis!!);showDate=false}}){Text("Confirmar")}},dismissButton={TextButton(onClick={showDate=false}){Text("Cancelar")}}){DatePicker(state=ds)}
  }
  if(showTime){var hh by remember{mutableStateOf(12)};var mm by remember{mutableStateOf(0)};AlertDialog(onDismissRequest={showTime=false},title={Text("Selecionar horário")},text={Column{Text("Hora: $hh");Slider(value=hh.toFloat(),onValueChange={hh=it.toInt()},valueRange=0f..23f,steps=22);Text("Minuto: $mm");Slider(value=mm.toFloat(),onValueChange={mm=(it.toInt()/5)*5},valueRange=0f..55f,steps=10);Text(String.format(Locale("pt","BR"),"%02d:%02d",hh,mm))}},confirmButton={TextButton(onClick={time=String.format(Locale("pt","BR"),"%02d:%02d",hh,mm);showTime=false}){Text("Confirmar")}},dismissButton={TextButton(onClick={showTime=false}){Text("Cancelar")}})}
  Field("Local",loc,onChange={loc=it});Field("De",from,onChange={from=it});Field("Gerência/Empresa (De)",fromCo,onChange={fromCo=it});Field("Para",to,onChange={to=it});Field("Gerência/Empresa (Para)",toCo,onChange={toCo=it});Field("Área / Equipamento / Atividade / Documento",area,onChange={area=it})
@@ -177,7 +179,7 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
      DatePickerDialog(onDismissRequest={dateDialog=false},
        confirmButton={TextButton(onClick={
          val millis=dp.selectedDateMillis
-         if(millis!=null){dateFilter=SimpleDateFormat("dd/MM/yyyy",Locale("pt","BR")).format(Date(millis));dateDialog=false}
+         if(millis!=null){dateFilter=dateFromPickerMillis(millis);dateDialog=false}
        }){Text("Aplicar")}},
        dismissButton={TextButton(onClick={dateDialog=false}){Text("Cancelar")}}){DatePicker(state=dp)}
    }
