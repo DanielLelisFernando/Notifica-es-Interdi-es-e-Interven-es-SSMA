@@ -11,7 +11,7 @@
 | Ícone visual do app | 🟢 Conceito aprovado | Barreira centralizada, alerta, sinalizadores e fundo azul; texto/logo removidos na versão limpa |
 | Ícone vetorial integrado inicial | 🟡 Implementado | Versão vetorial provisória; falta validar visualmente e gerar recursos adaptive completos |
 | Cadastro de Interdição / Notificação / Intervenção | 🟡 Implementação inicial | Formulário e salvamento local implementados, validação/fluxo completo pendente | Fluxo de cadastro completo não implementado |
-| Captura de fotos/evidências | 🔴 Pendente | — |
+| Captura de fotos/evidências | 🟡 Implementação inicial | Seleção de imagem e registro de URI como evento; validar armazenamento/visualização e exportação | — |
 | Assinatura digital por toque | 🔴 Pendente | Complemento digital; validar requisitos e procedimento |
 | Persistência Room/SQLite | 🟡 Implementada base | Entidades e DAO iniciais; migrações/testes pendentes | Implementação e migrações ainda não validadas |
 | Consulta e pesquisa de registros | 🔴 Pendente | — |
@@ -19,9 +19,9 @@
 | Ciclo de status e acompanhamento | 🟡 Implementação inicial | Status/tratativa e evento ainda precisam de refinamento | Definir/implementar estados e trilha de eventos |
 | Liberação formal de interdição | 🟡 Implementada base | Campos obrigatórios de liberação e evento; validação de fluxo/testes pendentes | Exigir responsável, evidência/registro de verificação e preservar histórico; nunca automática |
 | Linha do tempo imutável (append-only) | 🔴 Pendente | — |
-| PDF | 🟡 Implementação inicial | PDF de compartilhamento inicial; fidelidade, paginação e layout por validar | Fidelidade visual e paginação por validar contra original |
+| PDF | 🟡 Implementação inicial | PDF paginado inicial, compartilhamento via FileProvider; layout/fidelidade por validar | Fidelidade visual e paginação por validar contra original |
 | PDF complementar de liberação | 🔴 Pendente | — |
-| Exportação ZIP | 🔴 Pendente | — |
+| Exportação ZIP | 🟡 Implementação inicial | Exporta dados dos registros em JSON compactado; ainda não inclui histórico completo nem arquivos de evidência | — |
 | Backup e restauração | 🔴 Pendente | Integridade e prevenção de duplicidade por testar |
 | Uso totalmente offline | 🟡 Requisito definido | Ainda não validado em aparelho/modo avião |
 | Testes unitários/instrumentados | 🔴 Pendente | — |
