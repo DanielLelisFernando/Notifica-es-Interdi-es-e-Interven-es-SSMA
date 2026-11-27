@@ -28,7 +28,6 @@ import android.graphics.RectF
 import android.graphics.Canvas as AndroidCanvas
 import android.graphics.Color as AndroidColor
 import android.graphics.Path as AndroidPath
-import android.graphics.Bitmap
 import android.util.Base64
 import android.graphics.Typeface
 import androidx.compose.foundation.layout.*
