@@ -85,10 +85,10 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  var error by remember{mutableStateOf("")}
  LazyColumn(modifier.fillMaxSize().padding(16.dp)){item{
  Text("F-SSMA-0062R00 • Digital",fontWeight=FontWeight.Bold,color=Navy);Text("Campos do formulário e complementos digitais",fontSize=12.sp,color=Color.Gray)
- Field("Data",date){date=it};Field("Hora",time){time=it};Field("Local",loc){loc=it};Field("De",from){from=it};Field("Gerência/Empresa (De)",fromCo){fromCo=it};Field("Para",to){to=it};Field("Gerência/Empresa (Para)",toCo){toCo=it};Field("Área / Equipamento / Atividade / Documento",area){area=it}
+ Field("Data",date,onChange={date=it});Field("Hora",time,onChange={time=it});Field("Local",loc,onChange={loc=it});Field("De",from,onChange={from=it});Field("Gerência/Empresa (De)",fromCo,onChange={fromCo=it});Field("Para",to,onChange={to=it});Field("Gerência/Empresa (Para)",toCo,onChange={toCo=it});Field("Área / Equipamento / Atividade / Documento",area,onChange={area=it})
  Text("Tipo",fontWeight=FontWeight.Bold);Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("Interdição","Notificação","Intervenção").forEach{FilterChip(type==it,{type=it},label={Text(it)})}}
- Field("Descrição da condição não conforme",desc,{desc=it},true);Text("Severidade",fontWeight=FontWeight.Bold);Row{listOf("Leve","Moderada","Grave").forEach{FilterChip(severity==it,{severity=it},label={Text(it)})}}
- Field("Recomendações",rec,{rec=it},true);Field("Responsável ou testemunha",witness){witness=it};Field("Assinatura do Emitente (nome/registro digital)",sign){sign=it};Field("Providências tomadas",taken,{taken=it},true);Field("Observações",obs,{obs=it},true);Field("Prazo de execução",deadline){deadline=it}
+ Field("Descrição da condição não conforme",desc,onChange={desc=it},multi=true);Text("Severidade",fontWeight=FontWeight.Bold);Row{listOf("Leve","Moderada","Grave").forEach{FilterChip(severity==it,{severity=it},label={Text(it)})}}
+ Field("Recomendações",rec,onChange={rec=it},multi=true);Field("Responsável ou testemunha",witness,onChange={witness=it});Field("Assinatura do Emitente (nome/registro digital)",sign,onChange={sign=it});Field("Providências tomadas",taken,onChange={taken=it},multi=true);Field("Observações",obs,onChange={obs=it},multi=true);Field("Prazo de execução",deadline,onChange={deadline=it})
  if(error.isNotBlank())Text(error,color=Color.Red)
  Button(onClick={if(loc.isBlank()||desc.isBlank()||from.isBlank()||type.isBlank()){error="Preencha Local, De e Descrição antes de salvar."}else{val id=UUID.randomUUID().toString();val status=if(type=="Interdição")"ATIVA" else "REGISTRADO";val stamp=System.currentTimeMillis();onSave(IniRecord(id,date,time,loc,from,fromCo,to,toCo,area,type,desc,severity,rec,witness,sign,taken,obs,deadline,"","","",status,stamp,stamp))}},modifier=Modifier.fillMaxWidth()){Text("Salvar registro")}
  Spacer(Modifier.height(24.dp))
@@ -116,7 +116,7 @@ var releaseName by remember{mutableStateOf("")};var releaseManagement by remembe
  if(photoUri.isNotBlank())Text("Foto selecionada: $photoUri",fontSize=12.sp,color=Color.Gray)
  Text("Status",fontWeight=FontWeight.Bold);listOf("ATIVA","AGUARDANDO VERIFICAÇÃO").filter{r.type=="Interdição"}.forEach{FilterChip(status==it,{status=it; onUpdate(r.copy(status=it,updatedAt=System.currentTimeMillis()))},label={Text(it)})}
  if(r.type=="Interdição"&&r.status!="LIBERADA"){
- Text("Liberação formal",fontWeight=FontWeight.Bold,color=Color(0xFFB54735));Field("Nome do responsável pela liberação",releaseName){releaseName=it};Field("Gerência",releaseManagement){releaseManagement=it};Field("Registro de verificação / evidência",releaseSign){releaseSign=it}
+ Text("Liberação formal",fontWeight=FontWeight.Bold,color=Color(0xFFB54735));Field("Nome do responsável pela liberação",releaseName,onChange={releaseName=it});Field("Gerência",releaseManagement,onChange={releaseManagement=it});Field("Registro de verificação / evidência",releaseSign,onChange={releaseSign=it})
  Button(onClick={if(releaseName.isNotBlank()&&releaseManagement.isNotBlank()&&releaseSign.isNotBlank()){val updated=r.copy(status="LIBERADA",releaseName=releaseName,releaseManagement=releaseManagement,releaseSignature=releaseSign,updatedAt=System.currentTimeMillis());scope.launch{dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),r.id,System.currentTimeMillis(),"LIBERAÇÃO FORMAL","Área liberada após verificação: "+releaseSign,releaseName,releaseSign))};onUpdate(updated)}},modifier=Modifier.fillMaxWidth()){Text("Confirmar liberação formal")};Text("A liberação exige nome, gerência e verificação/evidência. Não ocorre automaticamente.",fontSize=12.sp,color=Color.Gray)
  }
  Spacer(Modifier.height(10.dp));Text("Histórico",fontWeight=FontWeight.Bold,color=Navy);events.forEach{Text("• ${SimpleDateFormat("dd/MM/yyyy HH:mm",Locale("pt","BR")).format(Date(it.timestamp))} — ${it.eventType}: ${it.description} (${it.responsible})",Modifier.padding(vertical=4.dp))}
@@ -128,8 +128,8 @@ private fun exportPdf(context:android.content.Context,r:IniRecord,events:List<Re
  fun newPage(){doc.finishPage(page);pageNumber++;page=doc.startPage(PdfDocument.PageInfo.Builder(595,842,pageNumber).create());y=42f}
  val lines=listOf("SALUM CONSTRUÇÕES LTDA.","SCL - INI • ${r.type}","F-SSMA-0062R00 • Registro ${r.id.take(8)}","Data/Hora: ${r.date} ${r.time}","Local: ${r.location}","De: ${r.fromPerson} • ${r.fromCompany}","Para: ${r.toPerson} • ${r.toCompany}","Área/Equipamento/Atividade: ${r.areaEquipmentActivity}","Tipo: ${r.type} • Severidade: ${r.severity}","Descrição: ${r.description}","Recomendações: ${r.recommendations}","Responsável/Testemunha: ${r.witness}","Emitente: ${r.emitterSignature}","Providências: ${r.actionsTaken}","Observações: ${r.observations}","Prazo: ${r.deadline}","Status: ${r.status}","Liberação - Nome: ${r.releaseName}","Gerência: ${r.releaseManagement}","Registro de verificação: ${r.releaseSignature}","HISTÓRICO")
  val eventLines=events.map { ev -> ev.eventType + ": " + ev.description + " — " + ev.responsible + " • " + ev.evidenceUri }
- lines += eventLines
- lines.forEach{line->line.chunked(85).forEach{wrapped->if(y>790)newPage();page.canvas.drawText(wrapped,36f,y,paint);y+=18f}}
+ val allLines = lines + eventLines
+ allLines.forEach{line->line.chunked(85).forEach{wrapped->if(y>790)newPage();page.canvas.drawText(wrapped,36f,y,paint);y+=18f}}
  doc.finishPage(page);val file=File(context.cacheDir,"SCL-INI-${r.id.take(8)}.pdf");file.outputStream().use{doc.writeTo(it)};doc.close()
  val uri=FileProvider.getUriForFile(context,"br.com.salum.sclini.fileprovider",file)
  val intent=Intent(Intent.ACTION_SEND).apply{type="application/pdf";putExtra(Intent.EXTRA_STREAM,uri);addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)}
