@@ -3,7 +3,8 @@ import android.os.Bundle
 import android.content.Intent
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
-import android.net.Uri\nimport androidx.core.content.FileProvider\nimport androidx.activity.compose.rememberLauncherForActivityResult\nimport androidx.activity.result.contract.ActivityResultContracts
+import android.net.Uri
+import androidx.core.content.FileProvider\nimport androidx.activity.compose.rememberLauncherForActivityResult\nimport androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -54,7 +55,8 @@ class MainActivity:ComponentActivity(){
  "actions"->RecordList(Modifier.padding(p),"Ações / Tratativas",records.filter{it.status!="LIBERADA"}){selected=it;page="detail"}
  "indicators"->Indicators(Modifier.padding(p),records)
  "detail"->selected?.let{RecordDetail(Modifier.padding(p),it,dao){updated->scope.launch{dao.update(updated);dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),updated.id,System.currentTimeMillis(),updated.status,updated.status,updated.releaseName));selected=updated};page="detail"}}
- "help"->Help(Modifier.padding(p))\n "backup"->BackupScreen(Modifier.padding(p),records)
+ "help"->Help(Modifier.padding(p))
+ "backup"->BackupScreen(Modifier.padding(p),records)
  else->Home(Modifier.padding(p)){page=it}
  }
  }}
@@ -69,7 +71,8 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  NavCard("Consultar registros","Histórico e pesquisa",Icons.Default.Search,Navy){onNav("records")}
  NavCard("Acompanhamento","Tratativas e prazos",Icons.Default.TaskAlt,Blue){onNav("actions")}
  NavCard("Indicadores","Visão gerencial local",Icons.Default.BarChart,Blue){onNav("indicators")}
- NavCard("Exportar dados","Gerar arquivo ZIP de registros",Icons.Default.Archive,Blue){onNav("backup")}\n NavCard("Instruções","Orientações e regras",Icons.Default.Info,Navy){onNav("help")}
+ NavCard("Exportar dados","Gerar arquivo ZIP de registros",Icons.Default.Archive,Blue){onNav("backup")}
+ NavCard("Instruções","Orientações e regras",Icons.Default.Info,Navy){onNav("help")}
  Spacer(Modifier.height(20.dp));Text("Versão 1.2.0",color=Color.Gray,fontSize=12.sp)
  }}
 @Composable private fun NavCard(t:String,s:String,i: androidx.compose.ui.graphics.vector.ImageVector,c:Color,on:()->Unit){
