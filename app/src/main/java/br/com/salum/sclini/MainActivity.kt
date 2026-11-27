@@ -98,6 +98,7 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
 @Composable private fun NavCard(t:String,s:String,i: androidx.compose.ui.graphics.vector.ImageVector,c:Color,on:()->Unit){
  Card(onClick=on,Modifier.fillMaxWidth().padding(vertical=5.dp),colors=CardDefaults.cardColors(containerColor=Color.White)){Row(Modifier.padding(15.dp),verticalAlignment=Alignment.CenterVertically){Icon(i,null,tint=c,modifier=Modifier.size(30.dp));Spacer(Modifier.width(14.dp));Column(Modifier.weight(1f)){Text(t,fontWeight=FontWeight.Bold,color=Navy);Text(s,fontSize=12.sp,color=Color.Gray)};Icon(Icons.Default.ChevronRight,null)}}
 }
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable private fun RecordForm(modifier:Modifier,onSave:(IniRecord)->Unit){
  val ctx=androidx.compose.ui.platform.LocalContext.current
  val today=SimpleDateFormat("dd/MM/yyyy",Locale("pt","BR")).format(Date());val now=SimpleDateFormat("HH:mm",Locale("pt","BR")).format(Date())
@@ -150,6 +151,7 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
 @Composable private fun Field(label:String,value:String,onChange:(String)->Unit,multi:Boolean=false){
  Column(Modifier.fillMaxWidth().padding(vertical=5.dp)){Text(label,fontSize=13.sp,fontWeight=FontWeight.SemiBold);OutlinedTextField(value,onChange,modifier=Modifier.fillMaxWidth(),minLines=if(multi)3 else 1)}
 }
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable private fun RecordList(modifier:Modifier,title:String,list:List<IniRecord>,onSelect:(IniRecord)->Unit){
  var search by remember{mutableStateOf("")}
  var dateFilter by remember{mutableStateOf("")}
