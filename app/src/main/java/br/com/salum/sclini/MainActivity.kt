@@ -56,7 +56,8 @@ class MainActivity:ComponentActivity(){
  val ctx= androidx.compose.ui.platform.LocalContext.current
  val dao=remember{RecordDatabase.get(ctx).dao()}
  val scope=rememberCoroutineScope()
- var page by remember{mutableStateOf("home")}\n BackHandler(enabled=page!="home"){page=if(page=="detail")"records" else "home";selected=null}
+ var page by remember{mutableStateOf("home")}
+ BackHandler(enabled=page!="home"){page=if(page=="detail")"records" else "home";selected=null}
  var records by remember{mutableStateOf(emptyList<IniRecord>())}
  var active by remember{mutableStateOf(emptyList<IniRecord>())}
  var selected by remember{mutableStateOf<IniRecord?>(null)}
