@@ -7,6 +7,7 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.BackHandler
@@ -24,6 +25,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.Typeface
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -57,14 +59,14 @@ class MainActivity:ComponentActivity(){
  val dao=remember{RecordDatabase.get(ctx).dao()}
  val scope=rememberCoroutineScope()
  var page by remember{mutableStateOf("home")}
- BackHandler(enabled=page!="home"){page=if(page=="detail")"records" else "home";selected=null}
+ BackHandler(enabled=page!="home"){page=when(page){ "detail"->"records"; "form","records","active","backup","help"->"home";else->"home"};selected=null}
  var records by remember{mutableStateOf(emptyList<IniRecord>())}
  var active by remember{mutableStateOf(emptyList<IniRecord>())}
  var selected by remember{mutableStateOf<IniRecord?>(null)}
  LaunchedEffect(dao){dao.observeAll().collectLatest{records=it}}
  LaunchedEffect(dao){dao.observeActiveInterdictions().collectLatest{active=it}}
  MaterialTheme(colorScheme=lightColorScheme(primary=Blue,secondary=Cyan)){
- Scaffold(topBar={if(page!="home")TopAppBar(title={Text(title(page))},navigationIcon={IconButton(onClick={page="home";selected=null}){Icon(Icons.Default.ArrowBack,"Voltar")}})}){p->
+ Scaffold(topBar={if(page!="home")TopAppBar(title={Text(title(page))},navigationIcon={IconButton(onClick={page=if(page=="detail")"records" else "home";selected=null}){Icon(Icons.Default.ArrowBack,"Voltar")}})}){p->
  when(page){
  "home"->Home(Modifier.padding(p)){page=it}
  "form"->RecordForm(Modifier.padding(p)){record->scope.launch{dao.insert(record);dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),record.id,System.currentTimeMillis(),"CRIADO","Registro emitido",record.fromPerson));page="records"}}
@@ -100,7 +102,10 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  var rec by remember{mutableStateOf("")};var witness by remember{mutableStateOf("")};var sign by remember{mutableStateOf("")};var taken by remember{mutableStateOf("")};var obs by remember{mutableStateOf("")};var deadline by remember{mutableStateOf("")}
  var error by remember{mutableStateOf("")}
  var photos by remember{mutableStateOf(emptyList<String>())}
- val gallery=rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()){uris->photos=photos+uris.map{it.toString()}}
+ val gallery=rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()){uris->uris.forEach{try{ctx.contentResolver.takePersistableUriPermission(it,Intent.FLAG_GRANT_READ_URI_PERMISSION)}catch(_:Exception){}};photos=photos+uris.map{it.toString()}}
+ val cameraUriState=remember{mutableStateOf<Uri?>(null)}
+ val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){ok->if(ok&&cameraUriState.value!=null)photos=photos+cameraUriState.value.toString()}
+ fun launchCamera(){val file=File(ctx.cacheDir,"camera-${System.currentTimeMillis()}.jpg");val uri=FileProvider.getUriForFile(ctx,"br.com.salum.sclini.fileprovider",file);cameraUriState.value=uri;camera.launch(uri)}
  LazyColumn(modifier.fillMaxSize().padding(16.dp)){item{
  Text("F-SSMA-0062R00 • Digital",fontWeight=FontWeight.Bold,color=Navy);Text("Campos do formulário e complementos digitais",fontSize=12.sp,color=Color.Gray)
  var showDate by remember{mutableStateOf(false)};var showTime by remember{mutableStateOf(false)}
@@ -114,9 +119,11 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  Field("Local",loc,onChange={loc=it});Field("De",from,onChange={from=it});Field("Gerência/Empresa (De)",fromCo,onChange={fromCo=it});Field("Para",to,onChange={to=it});Field("Gerência/Empresa (Para)",toCo,onChange={toCo=it});Field("Área / Equipamento / Atividade / Documento",area,onChange={area=it})
  Text("Tipo",fontWeight=FontWeight.Bold);Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("Interdição","Notificação","Intervenção").forEach{FilterChip(type==it,{type=it},label={Text(it)})}}
  Field("Descrição da condição não conforme",desc,onChange={desc=it},multi=true);Text("Severidade",fontWeight=FontWeight.Bold);Row{listOf("Leve","Moderada","Grave").forEach{FilterChip(severity==it,{severity=it},label={Text(it)})}}
- Field("Recomendações",rec,onChange={rec=it},multi=true);Field("Responsável ou testemunha",witness,onChange={witness=it});Field("Nome/registro do Emitente",sign,onChange={sign=it}); Text("Assinatura manuscrita",fontWeight=FontWeight.Bold); SignaturePad(onSignature={sign=it}); Button(onClick={gallery.launch("image/*")},modifier=Modifier.fillMaxWidth()){Text("Adicionar fotos (galeria)")}; photos.forEach{Text("Evidência: "+it.takeLast(35),fontSize=11.sp)};Field("Providências tomadas",taken,onChange={taken=it},multi=true);Field("Observações",obs,onChange={obs=it},multi=true);Field("Prazo de execução",deadline,onChange={deadline=it})
+ Field("Recomendações",rec,onChange={rec=it},multi=true);Field("Responsável ou testemunha",witness,onChange={witness=it});Field("Nome/registro do Emitente",sign,onChange={sign=it}); Text("Assinatura manuscrita",fontWeight=FontWeight.Bold); SignaturePad(onSignature={sign=it}); Button(onClick={launchCamera()},modifier=Modifier.fillMaxWidth()){Text("Capturar foto pela câmera")}
+ Button(onClick={gallery.launch(arrayOf("image/*"))},modifier=Modifier.fillMaxWidth()){Text("Adicionar fotos da galeria")}
+ photos.forEachIndexed{idx,u->Row(verticalAlignment=Alignment.CenterVertically){Text("Evidência ${idx+1}: "+u.takeLast(32),fontSize=11.sp,modifier=Modifier.weight(1f));TextButton(onClick={photos=photos.filterIndexed{j,_->j!=idx}}){Text("Remover")}}};Field("Providências tomadas",taken,onChange={taken=it},multi=true);Field("Observações",obs,onChange={obs=it},multi=true);Field("Prazo de execução",deadline,onChange={deadline=it})
  if(error.isNotBlank())Text(error,color=Color.Red)
- Button(onClick={if(loc.isBlank()||desc.isBlank()||from.isBlank()||type.isBlank()){error="Preencha Local, De e Descrição antes de salvar."}else{val id=UUID.randomUUID().toString();val status=if(type=="Interdição")"ATIVA" else "REGISTRADO";val stamp=System.currentTimeMillis();onSave(IniRecord(id,date,time,loc,from,fromCo,to,toCo,area,type,desc,severity,rec,witness,sign,taken,obs+"\\n[EVIDENCIAS]"+photos.joinToString("|"),deadline,"","","",status,stamp,stamp))}},modifier=Modifier.fillMaxWidth()){Text("Salvar registro")}
+ Button(onClick={if(loc.isBlank()||desc.isBlank()||from.isBlank()||type.isBlank()){error="Preencha Local, De e Descrição antes de salvar."}else{val id=UUID.randomUUID().toString();val status=if(type=="Interdição")"ATIVA" else "REGISTRADO";val stamp=System.currentTimeMillis();onSave(IniRecord(id,date,time,loc,from,fromCo,to,toCo,area,type,desc,severity,rec,witness,sign,taken,obs+"\n[EVIDENCIAS]"+photos.joinToString("|"),deadline,"","","",status,stamp,stamp))}},modifier=Modifier.fillMaxWidth()){Text("Salvar registro")}
  Spacer(Modifier.height(24.dp))
  }}
 }
@@ -197,6 +204,10 @@ private fun exportPdf(context:android.content.Context,r:IniRecord,events:List<Re
  val eventLines=events.map { ev -> ev.eventType + ": " + ev.description + " — " + ev.responsible + " • " + ev.evidenceUri }
  val allLines = lines + eventLines
  allLines.forEach{line->line.chunked(85).forEach{wrapped->if(y>790)newPage();page.canvas.drawText(wrapped,36f,y,paint);y+=18f}}
+ // Evidências fotográficas inseridas no PDF.
+ val marker="[EVIDENCIAS]"
+ val evid=r.observations.substringAfter(marker,"").split("|").filter{it.startsWith("content://")||it.startsWith("file://")}
+ evid.forEachIndexed{idx,raw->try{val bmp=BitmapFactory.decodeStream(context.contentResolver.openInputStream(Uri.parse(raw)));if(bmp!=null){if(y>600)newPage();page.canvas.drawText("EVIDÊNCIA FOTOGRÁFICA ${idx+1}",36f,y,paint);y+=10f;val dest=RectF(36f,y,559f,y+240f);page.canvas.drawBitmap(bmp,null,dest,null);y+=250f;bmp.recycle()}}catch(_:Exception){if(y>790)newPage();page.canvas.drawText("Imagem não acessível: ${raw.take(55)}",36f,y,paint);y+=18f}}
  doc.finishPage(page);val file=File(context.cacheDir,"SCL-INI-${r.id.take(8)}.pdf");file.outputStream().use{doc.writeTo(it)};doc.close()
  val uri=FileProvider.getUriForFile(context,"br.com.salum.sclini.fileprovider",file)
  val intent=Intent(Intent.ACTION_SEND).apply{type="application/pdf";putExtra(Intent.EXTRA_STREAM,uri);addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)}
