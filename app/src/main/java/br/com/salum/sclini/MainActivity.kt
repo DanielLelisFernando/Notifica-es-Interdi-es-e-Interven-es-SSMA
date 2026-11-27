@@ -99,6 +99,8 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  var area by remember{mutableStateOf("")};var type by remember{mutableStateOf("Interdição")};var desc by remember{mutableStateOf("")};var severity by remember{mutableStateOf("Moderada")}
  var rec by remember{mutableStateOf("")};var witness by remember{mutableStateOf("")};var sign by remember{mutableStateOf("")};var taken by remember{mutableStateOf("")};var obs by remember{mutableStateOf("")};var deadline by remember{mutableStateOf("")}
  var error by remember{mutableStateOf("")}
+ var photos by remember{mutableStateOf(emptyList<String>())}
+ val gallery=rememberLauncherForActivityResult(ActivityResultContracts.GetMultipleContents()){uris->photos=photos+uris.map{it.toString()}}
  LazyColumn(modifier.fillMaxSize().padding(16.dp)){item{
  Text("F-SSMA-0062R00 • Digital",fontWeight=FontWeight.Bold,color=Navy);Text("Campos do formulário e complementos digitais",fontSize=12.sp,color=Color.Gray)
  var showDate by remember{mutableStateOf(false)};var showTime by remember{mutableStateOf(false)}
@@ -112,11 +114,16 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  Field("Local",loc,onChange={loc=it});Field("De",from,onChange={from=it});Field("Gerência/Empresa (De)",fromCo,onChange={fromCo=it});Field("Para",to,onChange={to=it});Field("Gerência/Empresa (Para)",toCo,onChange={toCo=it});Field("Área / Equipamento / Atividade / Documento",area,onChange={area=it})
  Text("Tipo",fontWeight=FontWeight.Bold);Row(horizontalArrangement=Arrangement.spacedBy(5.dp)){listOf("Interdição","Notificação","Intervenção").forEach{FilterChip(type==it,{type=it},label={Text(it)})}}
  Field("Descrição da condição não conforme",desc,onChange={desc=it},multi=true);Text("Severidade",fontWeight=FontWeight.Bold);Row{listOf("Leve","Moderada","Grave").forEach{FilterChip(severity==it,{severity=it},label={Text(it)})}}
- Field("Recomendações",rec,onChange={rec=it},multi=true);Field("Responsável ou testemunha",witness,onChange={witness=it});Field("Assinatura do Emitente (nome/registro digital)",sign,onChange={sign=it});Field("Providências tomadas",taken,onChange={taken=it},multi=true);Field("Observações",obs,onChange={obs=it},multi=true);Field("Prazo de execução",deadline,onChange={deadline=it})
+ Field("Recomendações",rec,onChange={rec=it},multi=true);Field("Responsável ou testemunha",witness,onChange={witness=it});Field("Nome/registro do Emitente",sign,onChange={sign=it}); Text("Assinatura manuscrita",fontWeight=FontWeight.Bold); SignaturePad(onSignature={sign=it}); Button(onClick={gallery.launch("image/*")},modifier=Modifier.fillMaxWidth()){Text("Adicionar fotos (galeria)")}; photos.forEach{Text("Evidência: "+it.takeLast(35),fontSize=11.sp)};Field("Providências tomadas",taken,onChange={taken=it},multi=true);Field("Observações",obs,onChange={obs=it},multi=true);Field("Prazo de execução",deadline,onChange={deadline=it})
  if(error.isNotBlank())Text(error,color=Color.Red)
- Button(onClick={if(loc.isBlank()||desc.isBlank()||from.isBlank()||type.isBlank()){error="Preencha Local, De e Descrição antes de salvar."}else{val id=UUID.randomUUID().toString();val status=if(type=="Interdição")"ATIVA" else "REGISTRADO";val stamp=System.currentTimeMillis();onSave(IniRecord(id,date,time,loc,from,fromCo,to,toCo,area,type,desc,severity,rec,witness,sign,taken,obs,deadline,"","","",status,stamp,stamp))}},modifier=Modifier.fillMaxWidth()){Text("Salvar registro")}
+ Button(onClick={if(loc.isBlank()||desc.isBlank()||from.isBlank()||type.isBlank()){error="Preencha Local, De e Descrição antes de salvar."}else{val id=UUID.randomUUID().toString();val status=if(type=="Interdição")"ATIVA" else "REGISTRADO";val stamp=System.currentTimeMillis();onSave(IniRecord(id,date,time,loc,from,fromCo,to,toCo,area,type,desc,severity,rec,witness,sign,taken,obs+"\\n[EVIDENCIAS]"+photos.joinToString("|"),deadline,"","","",status,stamp,stamp))}},modifier=Modifier.fillMaxWidth()){Text("Salvar registro")}
  Spacer(Modifier.height(24.dp))
  }}
+}
+
+@Composable private fun SignaturePad(onSignature:(String)->Unit){
+ var strokes by remember{mutableStateOf(listOf<List<androidx.compose.ui.geometry.Offset>>())}; var current by remember{mutableStateOf(listOf<androidx.compose.ui.geometry.Offset>())}
+ Column{Canvas(Modifier.fillMaxWidth().height(180.dp).padding(4.dp).pointerInput(Unit){detectDragGestures(onDragStart={current=listOf(it)},onDragEnd={strokes=strokes+listOf(current);onSignature(strokes.flatten().joinToString(";"){ "${it.x.toInt()},${it.y.toInt()}" });current=emptyList()},onDrag={change,_->current=current+change.position;change.consume()})}){drawRect(Color.LightGray);(strokes+listOf(current)).forEach{pts->for(i in 1 until pts.size)drawLine(Color.Black,pts[i-1],pts[i],strokeWidth=4f)}};Row{TextButton(onClick={strokes=emptyList();current=emptyList();onSignature("")}){Text("Limpar assinatura")}}}
 }
 @Composable private fun Field(label:String,value:String,onChange:(String)->Unit,multi:Boolean=false){
  Column(Modifier.fillMaxWidth().padding(vertical=5.dp)){Text(label,fontSize=13.sp,fontWeight=FontWeight.SemiBold);OutlinedTextField(value,onChange,modifier=Modifier.fillMaxWidth(),minLines=if(multi)3 else 1)}
@@ -124,7 +131,10 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
 @Composable private fun RecordList(modifier:Modifier,title:String,list:List<IniRecord>,onSelect:(IniRecord)->Unit){
  var search by remember{mutableStateOf("")};var dateFilter by remember{mutableStateOf("")}
  val filtered=list.filter{(dateFilter.isBlank()||it.date==dateFilter)&&(search.isBlank()||it.location.contains(search,true)||it.description.contains(search,true)||it.fromPerson.contains(search,true)||it.toPerson.contains(search,true)||it.type.contains(search,true)||it.status.contains(search,true)}
- Column(modifier.fillMaxSize().padding(14.dp)){Text(title,fontSize=24.sp,fontWeight=FontWeight.Bold,color=Navy);OutlinedTextField(search,{search=it},modifier=Modifier.fillMaxWidth(),label={Text("Pesquisar local, descrição, pessoa ou status")},leadingIcon={Icon(Icons.Default.Search,null)});OutlinedTextField(dateFilter,{dateFilter=it},modifier=Modifier.fillMaxWidth(),label={Text("Filtro por data (dd/MM/yyyy)")},trailingIcon={IconButton(onClick={dateFilter=""){Icon(Icons.Default.Clear,"Limpar")}});if(filtered.isEmpty())Text("Nenhum registro encontrado.",Modifier.padding(12.dp),color=Color.Gray)
+ Column(modifier.fillMaxSize().padding(14.dp)){Text(title,fontSize=24.sp,fontWeight=FontWeight.Bold,color=Navy);OutlinedTextField(search,{search=it},modifier=Modifier.fillMaxWidth(),label={Text("Pesquisar local, descrição, pessoa ou status")},leadingIcon={Icon(Icons.Default.Search,null)});var dateDialog by remember{mutableStateOf(false)}
+ Button(onClick={dateDialog=true},modifier=Modifier.fillMaxWidth()){Text(if(dateFilter.isBlank())"Filtrar por data (calendário)" else "Data: $dateFilter")}
+ if(dateDialog){val dp=rememberDatePickerState();DatePickerDialog(onDismissRequest={dateDialog=false},confirmButton={TextButton(onClick={if(dp.selectedDateMillis!=null){dateFilter=SimpleDateFormat("dd/MM/yyyy",Locale("pt","BR")).format(Date(dp.selectedDateMillis!!));dateDialog=false}}){Text("Aplicar")}},dismissButton={TextButton(onClick={dateDialog=false}){Text("Cancelar")}}){DatePicker(state=dp)}}
+ OutlinedTextField(dateFilter,{dateFilter=it},modifier=Modifier.fillMaxWidth(),label={Text("Data dd/MM/yyyy (ou limpar)")},trailingIcon={IconButton(onClick={dateFilter=""){Icon(Icons.Default.Clear,"Limpar")}});if(filtered.isEmpty())Text("Nenhum registro encontrado.",Modifier.padding(12.dp),color=Color.Gray)
  LazyColumn{items(filtered){r->Card(onClick={onSelect(r)},Modifier.fillMaxWidth().padding(vertical=5.dp)){Column(Modifier.padding(14.dp)){Text("${r.type} • ${r.status}",fontWeight=FontWeight.Bold,color=Navy);Text("${r.date} ${r.time} — ${r.location}");Text(r.description,maxLines=2);Text("Prazo: ${r.deadline.ifBlank{"—"}}",fontSize=12.sp,color=Color.Gray)}}}}}
 }
 @Composable private fun RecordDetail(modifier:Modifier,r:IniRecord,dao:RecordDao,onUpdate:(IniRecord)->Unit){
@@ -144,7 +154,7 @@ var releaseName by remember{mutableStateOf("")};var releaseManagement by remembe
  Button(onClick={if(releaseName.isNotBlank()&&releaseManagement.isNotBlank()&&releaseSign.isNotBlank()){val updated=r.copy(status="LIBERADA",releaseName=releaseName,releaseManagement=releaseManagement,releaseSignature=releaseSign,updatedAt=System.currentTimeMillis());scope.launch{dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),r.id,System.currentTimeMillis(),"LIBERAÇÃO FORMAL","Área liberada após verificação: "+releaseSign,releaseName,releaseSign))};onUpdate(updated)}},modifier=Modifier.fillMaxWidth()){Text("Confirmar liberação formal")};Text("A liberação exige nome, gerência e verificação/evidência. Não ocorre automaticamente.",fontSize=12.sp,color=Color.Gray)
  }
  Spacer(Modifier.height(10.dp))
- Button(onClick={exportPdf(ctx,r,emptyList())},modifier=Modifier.fillMaxWidth()){Text("Exportar PDF / compartilhar")}
+ Button(onClick={exportPdf(ctx,r,events)},modifier=Modifier.fillMaxWidth()){Text("Exportar PDF / compartilhar")}
  }
 }
 private fun exportPdf(context:android.content.Context,r:IniRecord,events:List<RecordEvent>){
