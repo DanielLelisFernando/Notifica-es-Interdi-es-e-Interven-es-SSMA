@@ -90,7 +90,7 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  Field("Descrição da condição não conforme",desc,{desc=it},true);Text("Severidade",fontWeight=FontWeight.Bold);Row{listOf("Leve","Moderada","Grave").forEach{FilterChip(severity==it,{severity=it},label={Text(it)})}}
  Field("Recomendações",rec,{rec=it},true);Field("Responsável ou testemunha",witness){witness=it};Field("Assinatura do Emitente (nome/registro digital)",sign){sign=it};Field("Providências tomadas",taken,{taken=it},true);Field("Observações",obs,{obs=it},true);Field("Prazo de execução",deadline){deadline=it}
  if(error.isNotBlank())Text(error,color=Color.Red)
- Button(onClick={if(loc.isBlank()||desc.isBlank()||from.isBlank()||type.isBlank()){error="Preencha Local, De e Descrição antes de salvar."}else{val id=UUID.randomUUID().toString();val status=if(type=="Interdição")"ATIVA" else "EM TRATATIVA";val stamp=System.currentTimeMillis();onSave(IniRecord(id,date,time,loc,from,fromCo,to,toCo,area,type,desc,severity,rec,witness,sign,taken,obs,deadline,"","","",status,stamp,stamp))}},modifier=Modifier.fillMaxWidth()){Text("Salvar registro")}
+ Button(onClick={if(loc.isBlank()||desc.isBlank()||from.isBlank()||type.isBlank()){error="Preencha Local, De e Descrição antes de salvar."}else{val id=UUID.randomUUID().toString();val status=if(type=="Interdição")"ATIVA" else "REGISTRADO";val stamp=System.currentTimeMillis();onSave(IniRecord(id,date,time,loc,from,fromCo,to,toCo,area,type,desc,severity,rec,witness,sign,taken,obs,deadline,"","","",status,stamp,stamp))}},modifier=Modifier.fillMaxWidth()){Text("Salvar registro")}
  Spacer(Modifier.height(24.dp))
  }}
 }
