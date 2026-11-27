@@ -204,6 +204,15 @@ private fun exportPdf(context:android.content.Context,r:IniRecord,events:List<Re
  val eventLines=events.map { ev -> ev.eventType + ": " + ev.description + " — " + ev.responsible + " • " + ev.evidenceUri }
  val allLines = lines + eventLines
  allLines.forEach{line->line.chunked(85).forEach{wrapped->if(y>790)newPage();page.canvas.drawText(wrapped,36f,y,paint);y+=18f}}
+ // Renderiza os pontos da assinatura manuscrita no PDF.
+ if(r.emitterSignature.contains(",")){
+   if(y>700)newPage()
+   page.canvas.drawText("ASSINATURA MANUSCRITA DO EMITENTE",36f,y,paint);y+=10f
+   val sigPaint=Paint().apply{color=AndroidColor.BLACK;style=Paint.Style.STROKE;strokeWidth=2.5f;strokeCap=Paint.Cap.ROUND}
+   val signaturePath=AndroidPath();var started=false
+   r.emitterSignature.split(";").forEach{token->val pair=token.split(",");if(pair.size==2){val xx=pair[0].toFloatOrNull();val yy=pair[1].toFloatOrNull();if(xx!=null&&yy!=null){val px=36f+xx*0.45f;val py=y+yy*0.3f;if(!started){signaturePath.moveTo(px,py);started=true}else signaturePath.lineTo(px,py)}}}
+   page.canvas.drawPath(signaturePath,sigPaint);y+=75f
+ }
  // Evidências fotográficas inseridas no PDF.
  val marker="[EVIDENCIAS]"
  val evid=r.observations.substringAfter(marker,"").split("|").filter{it.startsWith("content://")||it.startsWith("file://")}
