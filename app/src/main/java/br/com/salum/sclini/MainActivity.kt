@@ -136,13 +136,13 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
 
 @Composable private fun SignaturePad(onSignature:(String)->Unit){
  var strokes by remember{mutableStateOf(listOf<List<androidx.compose.ui.geometry.Offset>>())}; var current by remember{mutableStateOf(listOf<androidx.compose.ui.geometry.Offset>())}
+ var widthForSignature by remember{mutableStateOf(600f)};var heightForSignature by remember{mutableStateOf(220f)}
  fun encodeSignature(all:List<List<androidx.compose.ui.geometry.Offset>>):String{
   val bitmap=Bitmap.createBitmap(600,220,Bitmap.Config.ARGB_8888);bitmap.eraseColor(AndroidColor.WHITE)
   val canvas=AndroidCanvas(bitmap);val p=Paint().apply{color=AndroidColor.BLACK;style=Paint.Style.STROKE;strokeWidth=5f;strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND}
   all.forEach{pts->if(pts.size>1){val path=AndroidPath();path.moveTo(pts[0].x*600f/widthForSignature,pts[0].y*220f/heightForSignature);pts.drop(1).forEach{path.lineTo(it.x*600f/widthForSignature,it.y*220f/heightForSignature)};canvas.drawPath(path,p)}}
   val bytes=java.io.ByteArrayOutputStream();bitmap.compress(Bitmap.CompressFormat.PNG,100,bytes);bitmap.recycle();return "SIGIMG:"+Base64.encodeToString(bytes.toByteArray(),Base64.NO_WRAP)
  }
- var widthForSignature by remember{mutableStateOf(600f)};var heightForSignature by remember{mutableStateOf(220f)}
  Column{Canvas(Modifier.fillMaxWidth().height(180.dp).padding(4.dp).pointerInput(Unit){detectDragGestures(onDragStart={current=listOf(it)},onDragEnd={strokes=strokes+listOf(current);current=emptyList()},onDrag={change,_->current=current+change.position;change.consume()})}){widthForSignature=size.width;heightForSignature=size.height;drawRect(Color.LightGray);(strokes+listOf(current)).forEach{pts->for(i in 1 until pts.size)drawLine(Color.Black,pts[i-1],pts[i],strokeWidth=4f)}}
   Button(onClick={onSignature(encodeSignature(strokes))},modifier=Modifier.fillMaxWidth()){Text("Salvar assinatura")}
   Row{TextButton(onClick={strokes=emptyList();current=emptyList();onSignature("")}){Text("Limpar assinatura")}}}
