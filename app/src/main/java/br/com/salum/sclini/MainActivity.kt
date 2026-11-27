@@ -63,10 +63,10 @@ class MainActivity:ComponentActivity(){
  val dao=remember{RecordDatabase.get(ctx).dao()}
  val scope=rememberCoroutineScope()
  var page by remember{mutableStateOf("home")}
- BackHandler(enabled=page!="home"){page=when(page){ "detail"->"records"; "form","records","active","backup","help"->"home";else->"home"};selected=null}
  var records by remember{mutableStateOf(emptyList<IniRecord>())}
  var active by remember{mutableStateOf(emptyList<IniRecord>())}
  var selected by remember{mutableStateOf<IniRecord?>(null)}
+ BackHandler(enabled=page!="home"){page=when(page){ "detail"->"records"; "form","records","active","backup","help"->"home";else->"home"};selected=null}
  LaunchedEffect(dao){dao.observeAll().collectLatest{records=it}}
  LaunchedEffect(dao){dao.observeActiveInterdictions().collectLatest{active=it}}
  MaterialTheme(colorScheme=lightColorScheme(primary=Blue,secondary=Cyan)){
@@ -107,7 +107,7 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  var rec by remember{mutableStateOf("")};var witness by remember{mutableStateOf("")};var sign by remember{mutableStateOf("")};var signatureImage by remember{mutableStateOf("")};var taken by remember{mutableStateOf("")};var obs by remember{mutableStateOf("")};var deadline by remember{mutableStateOf("")}
  var error by remember{mutableStateOf("")}
  var photos by remember{mutableStateOf(emptyList<String>())}
- fun persistEvidence(uri:Uri):String { val file=File(ctx.filesDir,"evidence-${UUID.randomUUID()}.jpg");ctx.contentResolver.openInputStream(uri)?.use{input->file.outputStream().use{input.copyTo(it)}};return file.absolutePath }
+ fun persistEvidence(uri:Uri):String { val file=File(ctx.filesDir,"evidence-${UUID.randomUUID()}.jpg"); ctx.contentResolver.openInputStream(uri)?.use { input -> file.outputStream().use { output -> input.copyTo(output) } } ?: throw IllegalStateException("Não foi possível abrir a imagem selecionada."); return file.absolutePath }
  val gallery=rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()){uris->photos=photos+uris.mapNotNull{try{persistEvidence(it)}catch(_:Exception){null}}}
  val cameraUriState=remember{mutableStateOf<Uri?>(null)}
  val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){ok->if(ok&&cameraUriState.value!=null)photos=photos+try{persistEvidence(cameraUriState.value!!)}catch(_:Exception){cameraUriState.value.toString()}}
