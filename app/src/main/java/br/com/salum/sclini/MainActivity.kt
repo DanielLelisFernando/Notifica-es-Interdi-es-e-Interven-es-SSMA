@@ -25,6 +25,11 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Rect
 import android.graphics.RectF
+import android.graphics.Canvas as AndroidCanvas
+import android.graphics.Color as AndroidColor
+import android.graphics.Path as AndroidPath
+import android.graphics.Bitmap
+import android.util.Base64
 import android.graphics.Typeface
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -102,9 +107,10 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  var rec by remember{mutableStateOf("")};var witness by remember{mutableStateOf("")};var sign by remember{mutableStateOf("")};var taken by remember{mutableStateOf("")};var obs by remember{mutableStateOf("")};var deadline by remember{mutableStateOf("")}
  var error by remember{mutableStateOf("")}
  var photos by remember{mutableStateOf(emptyList<String>())}
- val gallery=rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()){uris->uris.forEach{try{ctx.contentResolver.takePersistableUriPermission(it,Intent.FLAG_GRANT_READ_URI_PERMISSION)}catch(_:Exception){}};photos=photos+uris.map{it.toString()}}
+ fun persistEvidence(uri:Uri):String { val file=File(ctx.filesDir,"evidence-${UUID.randomUUID()}.jpg");ctx.contentResolver.openInputStream(uri)?.use{input->file.outputStream().use{input.copyTo(it)}};return file.absolutePath }
+ val gallery=rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()){uris->photos=photos+uris.mapNotNull{try{persistEvidence(it)}catch(_:Exception){null}}}
  val cameraUriState=remember{mutableStateOf<Uri?>(null)}
- val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){ok->if(ok&&cameraUriState.value!=null)photos=photos+cameraUriState.value.toString()}
+ val camera=rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()){ok->if(ok&&cameraUriState.value!=null)photos=photos+try{persistEvidence(cameraUriState.value!!)}catch(_:Exception){cameraUriState.value.toString()}}
  fun launchCamera(){val file=File(ctx.cacheDir,"camera-${System.currentTimeMillis()}.jpg");val uri=FileProvider.getUriForFile(ctx,"br.com.salum.sclini.fileprovider",file);cameraUriState.value=uri;camera.launch(uri)}
  LazyColumn(modifier.fillMaxSize().padding(16.dp)){item{
  Text("F-SSMA-0062R00 • Digital",fontWeight=FontWeight.Bold,color=Navy);Text("Campos do formulário e complementos digitais",fontSize=12.sp,color=Color.Gray)
@@ -130,7 +136,16 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
 
 @Composable private fun SignaturePad(onSignature:(String)->Unit){
  var strokes by remember{mutableStateOf(listOf<List<androidx.compose.ui.geometry.Offset>>())}; var current by remember{mutableStateOf(listOf<androidx.compose.ui.geometry.Offset>())}
- Column{Canvas(Modifier.fillMaxWidth().height(180.dp).padding(4.dp).pointerInput(Unit){detectDragGestures(onDragStart={current=listOf(it)},onDragEnd={strokes=strokes+listOf(current);onSignature(strokes.flatten().joinToString(";"){ "${it.x.toInt()},${it.y.toInt()}" });current=emptyList()},onDrag={change,_->current=current+change.position;change.consume()})}){drawRect(Color.LightGray);(strokes+listOf(current)).forEach{pts->for(i in 1 until pts.size)drawLine(Color.Black,pts[i-1],pts[i],strokeWidth=4f)}};Row{TextButton(onClick={strokes=emptyList();current=emptyList();onSignature("")}){Text("Limpar assinatura")}}}
+ fun encodeSignature(all:List<List<androidx.compose.ui.geometry.Offset>>):String{
+  val bitmap=Bitmap.createBitmap(600,220,Bitmap.Config.ARGB_8888);bitmap.eraseColor(AndroidColor.WHITE)
+  val canvas=AndroidCanvas(bitmap);val p=Paint().apply{color=AndroidColor.BLACK;style=Paint.Style.STROKE;strokeWidth=5f;strokeCap=Paint.Cap.ROUND;strokeJoin=Paint.Join.ROUND}
+  all.forEach{pts->if(pts.size>1){val path=AndroidPath();path.moveTo(pts[0].x*600f/widthForSignature,pts[0].y*220f/heightForSignature);pts.drop(1).forEach{path.lineTo(it.x*600f/widthForSignature,it.y*220f/heightForSignature)};canvas.drawPath(path,p)}}
+  val bytes=java.io.ByteArrayOutputStream();bitmap.compress(Bitmap.CompressFormat.PNG,100,bytes);bitmap.recycle();return "SIGIMG:"+Base64.encodeToString(bytes.toByteArray(),Base64.NO_WRAP)
+ }
+ var widthForSignature by remember{mutableStateOf(600f)};var heightForSignature by remember{mutableStateOf(220f)}
+ Column{Canvas(Modifier.fillMaxWidth().height(180.dp).padding(4.dp).pointerInput(Unit){detectDragGestures(onDragStart={current=listOf(it)},onDragEnd={strokes=strokes+listOf(current);current=emptyList()},onDrag={change,_->current=current+change.position;change.consume()})}){widthForSignature=size.width;heightForSignature=size.height;drawRect(Color.LightGray);(strokes+listOf(current)).forEach{pts->for(i in 1 until pts.size)drawLine(Color.Black,pts[i-1],pts[i],strokeWidth=4f)}}
+  Button(onClick={onSignature(encodeSignature(strokes))},modifier=Modifier.fillMaxWidth()){Text("Salvar assinatura")}
+  Row{TextButton(onClick={strokes=emptyList();current=emptyList();onSignature("")}){Text("Limpar assinatura")}}}
 }
 @Composable private fun Field(label:String,value:String,onChange:(String)->Unit,multi:Boolean=false){
  Column(Modifier.fillMaxWidth().padding(vertical=5.dp)){Text(label,fontSize=13.sp,fontWeight=FontWeight.SemiBold);OutlinedTextField(value,onChange,modifier=Modifier.fillMaxWidth(),minLines=if(multi)3 else 1)}
@@ -200,23 +215,18 @@ var releaseName by remember{mutableStateOf("")};var releaseManagement by remembe
 private fun exportPdf(context:android.content.Context,r:IniRecord,events:List<RecordEvent>){
  val doc=PdfDocument(); val paint=Paint().apply{textSize=12f}; var pageNumber=1;var page=doc.startPage(PdfDocument.PageInfo.Builder(595,842,pageNumber).create());var y=42f
  fun newPage(){doc.finishPage(page);pageNumber++;page=doc.startPage(PdfDocument.PageInfo.Builder(595,842,pageNumber).create());y=42f}
- val lines=listOf("SALUM CONSTRUÇÕES LTDA.","SCL - INI • ${r.type}","F-SSMA-0062R00 • Registro ${r.id.take(8)}","Data/Hora: ${r.date} ${r.time}","Local: ${r.location}","De: ${r.fromPerson} • ${r.fromCompany}","Para: ${r.toPerson} • ${r.toCompany}","Área/Equipamento/Atividade: ${r.areaEquipmentActivity}","Tipo: ${r.type} • Severidade: ${r.severity}","Descrição: ${r.description}","Recomendações: ${r.recommendations}","Responsável/Testemunha: ${r.witness}","Emitente: ${r.emitterSignature}","Providências: ${r.actionsTaken}","Observações: ${r.observations}","Prazo: ${r.deadline}","Status: ${r.status}","Liberação - Nome: ${r.releaseName}","Gerência: ${r.releaseManagement}","Registro de verificação: ${r.releaseSignature}","HISTÓRICO")
- val eventLines=events.map { ev -> ev.eventType + ": " + ev.description + " — " + ev.responsible + " • " + ev.evidenceUri }
+ val headerPaint=Paint().apply{color=AndroidColor.rgb(18,59,103);textSize=20f;typeface=Typeface.create(Typeface.DEFAULT,Typeface.BOLD)};page.canvas.drawText("SALUM CONSTRUÇÕES",36f,y,headerPaint);y+=28f;page.canvas.drawText("SCL - INI • FORMULÁRIO F-SSMA-0062R00",36f,y,Paint().apply{textSize=13f;typeface=Typeface.create(Typeface.DEFAULT,Typeface.BOLD)});y+=24f;page.canvas.drawLine(36f,y,559f,y,Paint().apply{color=AndroidColor.rgb(32,184,204);strokeWidth=3f});y+=18f;val lines=listOf("Registro ${r.id.take(8)}","Data/Hora: ${r.date} ${r.time}","Local: ${r.location}","De: ${r.fromPerson} • ${r.fromCompany}","Para: ${r.toPerson} • ${r.toCompany}","Área/Equipamento/Atividade: ${r.areaEquipmentActivity}","Tipo: ${r.type} • Severidade: ${r.severity}","Descrição: ${r.description}","Recomendações: ${r.recommendations}","Responsável/Testemunha: ${r.witness}","Emitente: ${r.emitterSignature}","Providências: ${r.actionsTaken}","Observações: ${r.observations.substringBefore(marker)}","Prazo: ${r.deadline}","Status: ${r.status}","Liberação - Nome: ${r.releaseName}","Gerência: ${r.releaseManagement}","Registro de verificação: ${r.releaseSignature}","")
+ val eventLines=emptyList<String>()
  val allLines = lines + eventLines
  allLines.forEach{line->line.chunked(85).forEach{wrapped->if(y>790)newPage();page.canvas.drawText(wrapped,36f,y,paint);y+=18f}}
- // Renderiza os pontos da assinatura manuscrita no PDF.
- if(r.emitterSignature.contains(",")){
-   if(y>700)newPage()
-   page.canvas.drawText("ASSINATURA MANUSCRITA DO EMITENTE",36f,y,paint);y+=10f
-   val sigPaint=Paint().apply{color=AndroidColor.BLACK;style=Paint.Style.STROKE;strokeWidth=2.5f;strokeCap=Paint.Cap.ROUND}
-   val signaturePath=AndroidPath();var started=false
-   r.emitterSignature.split(";").forEach{token->val pair=token.split(",");if(pair.size==2){val xx=pair[0].toFloatOrNull();val yy=pair[1].toFloatOrNull();if(xx!=null&&yy!=null){val px=36f+xx*0.45f;val py=y+yy*0.3f;if(!started){signaturePath.moveTo(px,py);started=true}else signaturePath.lineTo(px,py)}}}
-   page.canvas.drawPath(signaturePath,sigPaint);y+=75f
+ // Assinatura manuscrita persistida como imagem Base64 (PNG).
+ if(r.emitterSignature.startsWith("SIGIMG:")){
+  try{val bytes=Base64.decode(r.emitterSignature.substringAfter("SIGIMG:"),Base64.DEFAULT);val bmp=BitmapFactory.decodeByteArray(bytes,0,bytes.size);if(bmp!=null){if(y>650)newPage();page.canvas.drawText("ASSINATURA MANUSCRITA DO EMITENTE",36f,y,paint);y+=12f;page.canvas.drawBitmap(bmp,null,RectF(36f,y,300f,y+100f),null);y+=110f;bmp.recycle()}}catch(_:Exception){}
  }
  // Evidências fotográficas inseridas no PDF.
  val marker="[EVIDENCIAS]"
- val evid=r.observations.substringAfter(marker,"").split("|").filter{it.startsWith("content://")||it.startsWith("file://")}
- evid.forEachIndexed{idx,raw->try{val bmp=BitmapFactory.decodeStream(context.contentResolver.openInputStream(Uri.parse(raw)));if(bmp!=null){if(y>600)newPage();page.canvas.drawText("EVIDÊNCIA FOTOGRÁFICA ${idx+1}",36f,y,paint);y+=10f;val dest=RectF(36f,y,559f,y+240f);page.canvas.drawBitmap(bmp,null,dest,null);y+=250f;bmp.recycle()}}catch(_:Exception){if(y>790)newPage();page.canvas.drawText("Imagem não acessível: ${raw.take(55)}",36f,y,paint);y+=18f}}
+ val evid=r.observations.substringAfter(marker,"").split("|").filter{it.startsWith("/")||it.startsWith("content://")||it.startsWith("file://")}
+ evid.forEachIndexed{idx,raw->try{val bmp=if(raw.startsWith("/"))BitmapFactory.decodeFile(raw) else BitmapFactory.decodeStream(context.contentResolver.openInputStream(Uri.parse(raw)));if(bmp!=null){if(y>600)newPage();page.canvas.drawText("EVIDÊNCIA FOTOGRÁFICA ${idx+1}",36f,y,paint);y+=10f;val dest=RectF(36f,y,559f,y+240f);page.canvas.drawBitmap(bmp,null,dest,null);y+=250f;bmp.recycle()}}catch(_:Exception){if(y>790)newPage();page.canvas.drawText("Imagem não acessível: ${raw.take(55)}",36f,y,paint);y+=18f}}
  doc.finishPage(page);val file=File(context.cacheDir,"SCL-INI-${r.id.take(8)}.pdf");file.outputStream().use{doc.writeTo(it)};doc.close()
  val uri=FileProvider.getUriForFile(context,"br.com.salum.sclini.fileprovider",file)
  val intent=Intent(Intent.ACTION_SEND).apply{type="application/pdf";putExtra(Intent.EXTRA_STREAM,uri);addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)}
@@ -229,7 +239,7 @@ private fun exportPdf(context:android.content.Context,r:IniRecord,events:List<Re
  var msg by remember{mutableStateOf("")}
  Column(modifier.fillMaxSize().padding(18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
  Text("Exportação de dados",fontSize=24.sp,fontWeight=FontWeight.Bold,color=Navy)
- Text("Exporta registros cadastrados em arquivo JSON compactado (ZIP), para backup ou transferência. Inclui dados de registro, mas não arquivos de imagem incorporados.")
+ Text("Exporta registros cadastrados em arquivo JSON compactado (ZIP). Evidências fotográficas são armazenadas localmente no aplicativo.")
  Button(onClick={exportRecordsZip(context,records);msg="Arquivo ZIP gerado e aberto para compartilhamento."},modifier=Modifier.fillMaxWidth()){Text("Exportar ZIP")}
  if(msg.isNotBlank())Text(msg,color=Color.Gray)
  Text("Quantidade de registros: ${records.size}")
