@@ -107,7 +107,8 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  val ctx= androidx.compose.ui.platform.LocalContext.current;val scope=rememberCoroutineScope()
 var releaseName by remember{mutableStateOf("")};var releaseManagement by remember{mutableStateOf("")};var releaseSign by remember{mutableStateOf("")};var status by remember{mutableStateOf(r.status)}
  var events by remember{mutableStateOf(emptyList<RecordEvent>())}
- var photoUri by remember{mutableStateOf("")}\n val photoPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{photoUri=it.toString();try{ctx.contentResolver.takePersistableUriPermission(it,Intent.FLAG_GRANT_READ_URI_PERMISSION)}catch(_:Exception){};scope.launch{dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),r.id,System.currentTimeMillis(),"EVIDÊNCIA/FOTO","Arquivo anexado: $it","",it.toString()))}}}
+ var photoUri by remember{mutableStateOf("")}
+ val photoPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{photoUri=it.toString();try{ctx.contentResolver.takePersistableUriPermission(it,Intent.FLAG_GRANT_READ_URI_PERMISSION)}catch(_:Exception){};scope.launch{dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),r.id,System.currentTimeMillis(),"EVIDÊNCIA/FOTO","Arquivo anexado: $it","",it.toString()))}}}
  LaunchedEffect(r.id){dao.observeEvents(r.id).collectLatest{events=it}}
  Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)){
  Text("${r.type} • ${r.status}",fontSize=23.sp,fontWeight=FontWeight.Bold,color=Navy);Text("${r.date} ${r.time} • ${r.location}");Text("Emitente: ${r.fromPerson} / ${r.fromCompany}");Text("Destinatário: ${r.toPerson} / ${r.toCompany}");Text("Área: ${r.areaEquipmentActivity}");Text("Severidade: ${r.severity}");Text("Descrição: ${r.description}");Text("Recomendações: ${r.recommendations}");Text("Providências: ${r.actionsTaken}");Text("Prazo: ${r.deadline}")
