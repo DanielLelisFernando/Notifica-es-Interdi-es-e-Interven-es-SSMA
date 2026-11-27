@@ -75,7 +75,7 @@ class MainActivity:ComponentActivity(){
  Scaffold(topBar={if(page!="home")TopAppBar(title={Text(title(page))},navigationIcon={IconButton(onClick={page=if(page=="detail")"records" else "home";selected=null}){Icon(Icons.Default.ArrowBack,"Voltar")}})}){p->
  when(page){
  "home"->Home(Modifier.padding(p)){page=it}
- "form"->RecordForm(Modifier.padding(p)){record->scope.launch{dao.insert(record);dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),record.id,System.currentTimeMillis(),"CRIADO","Registro emitido",record.fromPerson));page="records"}}
+ "form"->RecordForm(Modifier.padding(p)){record->scope.launch{dao.insert(record);dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),record.id,System.currentTimeMillis(),"CRIADO","Registro emitido",record.fromPerson));exportPdf(ctx,record,emptyList());page="records"}}
  "active"->RecordList(Modifier.padding(p),"Interdições Ativas",active){selected=it;page="detail"}
  "records"->RecordList(Modifier.padding(p),"Registros",records){selected=it;page="detail"}
  "detail"->selected?.let{RecordDetail(Modifier.padding(p),it,dao){updated->scope.launch{dao.update(updated);dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),updated.id,System.currentTimeMillis(),updated.status,updated.status,updated.releaseName));selected=updated};page="detail"}}
@@ -117,7 +117,7 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  fun launchCamera(){val file=File(ctx.cacheDir,"camera-${System.currentTimeMillis()}.jpg");val uri=FileProvider.getUriForFile(ctx,"br.com.salum.sclini.fileprovider",file);cameraUriState.value=uri;camera.launch(uri)}
  LazyColumn(modifier.fillMaxSize().padding(16.dp)){item{
  Text("F-SSMA-0062R00 • Digital",fontWeight=FontWeight.Bold,color=Navy);Text("Campos do formulário e complementos digitais",fontSize=12.sp,color=Color.Gray)
- var showDate by remember{mutableStateOf(false)};var showTime by remember{mutableStateOf(false)}
+ var showDate by remember{mutableStateOf(false)};var showDeadlineDate by remember{mutableStateOf(false)};var showTime by remember{mutableStateOf(false)}
  Button(onClick={showDate=true},modifier=Modifier.fillMaxWidth()){Text("Selecionar data: $date")}
  Button(onClick={showTime=true},modifier=Modifier.fillMaxWidth()){Text("Selecionar hora: $time")}
  if(showDate){
@@ -130,7 +130,7 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  Field("Descrição da condição não conforme",desc,onChange={desc=it},multi=true);Text("Severidade",fontWeight=FontWeight.Bold);Row{listOf("Leve","Moderada","Grave").forEach{FilterChip(severity==it,{severity=it},label={Text(it)})}}
  Field("Recomendações",rec,onChange={rec=it},multi=true);Field("Responsável ou testemunha",witness,onChange={witness=it});Field("Nome/registro do Emitente",sign,onChange={sign=it}); Text("Assinatura manuscrita",fontWeight=FontWeight.Bold); SignaturePad(onSignature={signatureImage=it}); Button(onClick={launchCamera()},modifier=Modifier.fillMaxWidth()){Text("Capturar foto pela câmera")}
  Button(onClick={gallery.launch(arrayOf("image/*"))},modifier=Modifier.fillMaxWidth()){Text("Adicionar fotos da galeria")}
- photos.forEachIndexed{idx,u->Row(verticalAlignment=Alignment.CenterVertically){Text("Evidência ${idx+1}: "+u.takeLast(32),fontSize=11.sp,modifier=Modifier.weight(1f));TextButton(onClick={photos=photos.filterIndexed{j,_->j!=idx}}){Text("Remover")}}};Field("Providências tomadas",taken,onChange={taken=it},multi=true);Field("Observações",obs,onChange={obs=it},multi=true);Field("Prazo de execução",deadline,onChange={deadline=it})
+ photos.forEachIndexed{idx,u->Row(verticalAlignment=Alignment.CenterVertically){Text("Evidência ${idx+1}: "+u.takeLast(32),fontSize=11.sp,modifier=Modifier.weight(1f));TextButton(onClick={photos=photos.filterIndexed{j,_->j!=idx}}){Text("Remover")}}};Field("Providências tomadas",taken,onChange={taken=it},multi=true);Field("Observações",obs,onChange={obs=it},multi=true);Button(onClick={showDeadlineDate=true},modifier=Modifier.fillMaxWidth()){Text(if(deadline.isBlank())"Selecionar prazo (calendário)" else "Prazo: $deadline • alterar")};if(showDeadlineDate){val deadlinePicker=rememberDatePickerState();DatePickerDialog(onDismissRequest={showDeadlineDate=false},confirmButton={TextButton(onClick={if(deadlinePicker.selectedDateMillis!=null){deadline=dateFromPickerMillis(deadlinePicker.selectedDateMillis!!);showDeadlineDate=false}}){Text("Confirmar")}},dismissButton={TextButton(onClick={showDeadlineDate=false}){Text("Cancelar")}}){DatePicker(state=deadlinePicker)}}
  if(error.isNotBlank())Text(error,color=Color.Red)
  Button(onClick={if(loc.isBlank()||desc.isBlank()||from.isBlank()||type.isBlank()){error="Preencha Local, De e Descrição antes de salvar."}else{val id=UUID.randomUUID().toString();val status=if(type=="Interdição")"ATIVA" else "REGISTRADO";val stamp=System.currentTimeMillis();onSave(IniRecord(id,date,time,loc,from,fromCo,to,toCo,area,type,desc,severity,rec,witness,sign,taken,obs+"\nEMITENTE:"+sign+"\n[EVIDENCIAS]"+photos.joinToString("|"),deadline,"","","",status,stamp,stamp).copy(emitterSignature=if(signatureImage.isNotBlank())signatureImage else sign))}},modifier=Modifier.fillMaxWidth()){Text("Salvar registro")}
  Spacer(Modifier.height(24.dp))
