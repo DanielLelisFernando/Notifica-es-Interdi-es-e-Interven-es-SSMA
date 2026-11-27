@@ -54,7 +54,7 @@ class MainActivity:ComponentActivity(){
  "actions"->RecordList(Modifier.padding(p),"Ações / Tratativas",records.filter{it.status!="LIBERADA"}){selected=it;page="detail"}
  "indicators"->Indicators(Modifier.padding(p),records)
  "detail"->selected?.let{RecordDetail(Modifier.padding(p),it,dao){updated->scope.launch{dao.update(updated);dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),updated.id,System.currentTimeMillis(),updated.status,updated.status,updated.releaseName));selected=updated};page="detail"}}
- "help"->Help(Modifier.padding(p))
+ "help"->Help(Modifier.padding(p))\n "backup"->BackupScreen(Modifier.padding(p),records)
  else->Home(Modifier.padding(p)){page=it}
  }
  }}
@@ -69,7 +69,7 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  NavCard("Consultar registros","Histórico e pesquisa",Icons.Default.Search,Navy){onNav("records")}
  NavCard("Acompanhamento","Tratativas e prazos",Icons.Default.TaskAlt,Blue){onNav("actions")}
  NavCard("Indicadores","Visão gerencial local",Icons.Default.BarChart,Blue){onNav("indicators")}
- NavCard("Instruções","Orientações e regras",Icons.Default.Info,Navy){onNav("help")}
+ NavCard("Exportar dados","Gerar arquivo ZIP de registros",Icons.Default.Archive,Blue){onNav("backup")}\n NavCard("Instruções","Orientações e regras",Icons.Default.Info,Navy){onNav("help")}
  Spacer(Modifier.height(20.dp));Text("Versão 1.2.0",color=Color.Gray,fontSize=12.sp)
  }}
 @Composable private fun NavCard(t:String,s:String,i: androidx.compose.ui.graphics.vector.ImageVector,c:Color,on:()->Unit){
@@ -97,8 +97,10 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  Column(Modifier.fillMaxWidth().padding(vertical=5.dp)){Text(label,fontSize=13.sp,fontWeight=FontWeight.SemiBold);OutlinedTextField(value,onChange,modifier=Modifier.fillMaxWidth(),minLines=if(multi)3 else 1)}
 }
 @Composable private fun RecordList(modifier:Modifier,title:String,list:List<IniRecord>,onSelect:(IniRecord)->Unit){
- Column(modifier.fillMaxSize().padding(14.dp)){Text(title,fontSize=24.sp,fontWeight=FontWeight.Bold,color=Navy);if(list.isEmpty())Text("Nenhum registro encontrado.",Modifier.padding(12.dp),color=Color.Gray)
- LazyColumn{items(list){r->Card(onClick={onSelect(r)},Modifier.fillMaxWidth().padding(vertical=5.dp)){Column(Modifier.padding(14.dp)){Text("${r.type} • ${r.status}",fontWeight=FontWeight.Bold,color=Navy);Text("${r.date} ${r.time} — ${r.location}");Text(r.description,maxLines=2);Text("Prazo: ${r.deadline.ifBlank{"—"}}",fontSize=12.sp,color=Color.Gray)}}}}}
+ var search by remember{mutableStateOf("")}
+ val filtered=list.filter{search.isBlank()||it.location.contains(search,true)||it.description.contains(search,true)||it.fromPerson.contains(search,true)||it.toPerson.contains(search,true)||it.type.contains(search,true)||it.status.contains(search,true)}
+ Column(modifier.fillMaxSize().padding(14.dp)){Text(title,fontSize=24.sp,fontWeight=FontWeight.Bold,color=Navy);OutlinedTextField(search,{search=it},modifier=Modifier.fillMaxWidth(),label={Text("Pesquisar local, descrição, responsável ou status")},leadingIcon={Icon(Icons.Default.Search,null)});if(filtered.isEmpty())Text("Nenhum registro encontrado.",Modifier.padding(12.dp),color=Color.Gray)
+ LazyColumn{items(filtered){r->Card(onClick={onSelect(r)},Modifier.fillMaxWidth().padding(vertical=5.dp)){Column(Modifier.padding(14.dp)){Text("${r.type} • ${r.status}",fontWeight=FontWeight.Bold,color=Navy);Text("${r.date} ${r.time} — ${r.location}");Text(r.description,maxLines=2);Text("Prazo: ${r.deadline.ifBlank{"—"}}",fontSize=12.sp,color=Color.Gray)}}}}}
 }
 @Composable private fun RecordDetail(modifier:Modifier,r:IniRecord,dao:RecordDao,onUpdate:(IniRecord)->Unit){
  val ctx= androidx.compose.ui.platform.LocalContext.current;val scope=rememberCoroutineScope()
@@ -135,3 +137,21 @@ private fun exportPdf(context:android.content.Context,r:IniRecord,events:List<Re
  }}
 @Composable private fun Help(modifier:Modifier){
  Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)){Text("Instruções de uso",fontSize=24.sp,fontWeight=FontWeight.Bold,color=Navy);Text("• O app funciona localmente, sem necessidade de conexão.\n• Registre com clareza local, condição, recomendações e prazo.\n• Acompanhe tratativas no registro.\n• Interdições permanecem ativas até liberação formal.\n• A liberação requer responsável, gerência e evidência/verificação.\n• O histórico registra eventos de acompanhamento.\n• Exporte PDF para compartilhamento.\n• Campos adicionais digitais não substituem requisitos/procedimentos corporativos.")}}
+@Composable private fun BackupScreen(modifier:Modifier,records:List<IniRecord>){
+ val context=androidx.compose.ui.platform.LocalContext.current
+ var msg by remember{mutableStateOf("")}
+ Column(modifier.fillMaxSize().padding(18.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+ Text("Exportação de dados",fontSize=24.sp,fontWeight=FontWeight.Bold,color=Navy)
+ Text("Exporta registros cadastrados em arquivo JSON compactado (ZIP), para backup ou transferência. Inclui dados de registro, mas não arquivos de imagem incorporados.")
+ Button(onClick={exportRecordsZip(context,records);msg="Arquivo ZIP gerado e aberto para compartilhamento."},modifier=Modifier.fillMaxWidth()){Text("Exportar ZIP")}
+ if(msg.isNotBlank())Text(msg,color=Color.Gray)
+ Text("Quantidade de registros: ${records.size}")
+ }
+}
+private fun exportRecordsZip(context:android.content.Context,records:List<IniRecord>){
+ fun esc(s:String)=s.replace("\\\\","\\\\\\\\").replace("\\\"","\\\\\\\"").replace("\\n","\\\\n")
+ val json=records.joinToString(prefix="[",postfix="]"){r->"""{"id":"${esc(r.id)}","date":"${esc(r.date)}","time":"${esc(r.time)}","location":"${esc(r.location)}","fromPerson":"${esc(r.fromPerson)}","fromCompany":"${esc(r.fromCompany)}","toPerson":"${esc(r.toPerson)}","toCompany":"${esc(r.toCompany)}","area":"${esc(r.areaEquipmentActivity)}","type":"${esc(r.type)}","description":"${esc(r.description)}","severity":"${esc(r.severity)}","recommendations":"${esc(r.recommendations)}","witness":"${esc(r.witness)}","emitterSignature":"${esc(r.emitterSignature)}","actionsTaken":"${esc(r.actionsTaken)}","observations":"${esc(r.observations)}","deadline":"${esc(r.deadline)}","releaseName":"${esc(r.releaseName)}","releaseManagement":"${esc(r.releaseManagement)}","releaseSignature":"${esc(r.releaseSignature)}","status":"${esc(r.status)}","createdAt":${r.createdAt},"updatedAt":${r.updatedAt}}"""}
+ val file=File(context.cacheDir,"SCL-INI-backup-${System.currentTimeMillis()}.zip")
+ java.util.zip.ZipOutputStream(file.outputStream()).use{zip->zip.putNextEntry(java.util.zip.ZipEntry("records.json"));zip.write(json.toByteArray(Charsets.UTF_8));zip.closeEntry();zip.putNextEntry(java.util.zip.ZipEntry("README.txt"));zip.write("Backup SCL - INI. Exportação de registros; evidências anexadas via URI podem não estar incluídas.".toByteArray());zip.closeEntry()}
+ val uri=FileProvider.getUriForFile(context,"br.com.salum.sclini.fileprovider",file);val intent=Intent(Intent.ACTION_SEND).apply{type="application/zip";putExtra(Intent.EXTRA_STREAM,uri);addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)};context.startActivity(Intent.createChooser(intent,"Compartilhar backup SCL - INI"))
+}
