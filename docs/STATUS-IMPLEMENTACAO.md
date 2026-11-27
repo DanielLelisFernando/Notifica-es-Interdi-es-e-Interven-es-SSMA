@@ -16,7 +16,7 @@
 | Persistência Room/SQLite | 🟡 Implementada base | Entidades e DAO iniciais; migrações/testes pendentes | Implementação e migrações ainda não validadas |
 | Consulta e pesquisa de registros | 🔴 Pendente | — |
 | Painel de Interdições Ativas | 🟡 Implementado | Listagem baseada no status local | — |
-| Ciclo de status e acompanhamento | 🟡 Implementação inicial | Status/tratativa e evento ainda precisam de refinamento | Definir/implementar estados e trilha de eventos |
+| Status de interdição | 🟡 Implementação inicial | Status ATIVA, AGUARDANDO VERIFICAÇÃO e LIBERADA; validar transições |
 | Liberação formal de interdição | 🟡 Implementada base | Campos obrigatórios de liberação e evento; validação de fluxo/testes pendentes | Exigir responsável, evidência/registro de verificação e preservar histórico; nunca automática |
 | Linha do tempo imutável (append-only) | 🔴 Pendente | — |
 | PDF | 🟡 Implementação inicial | PDF paginado inicial, compartilhamento via FileProvider; layout/fidelidade por validar | Fidelidade visual e paginação por validar contra original |
@@ -34,8 +34,13 @@
 2. Validar e estabilizar a compilação do APK.
 3. Implementar cadastro com todos os campos do formulário e armazenamento offline.
 4. Implementar consulta, histórico e painel de interdições ativas.
-5. Implementar tratativas e fluxo formal de liberação.
+5. Finalizar fluxo formal de liberação e histórico.
 6. Gerar PDFs, exportação ZIP e backup/restauração.
 7. Executar testes funcionais e físicos, atualizando este status e o changelog.
 
 **Legenda:** 🟢 concluído/documentado | 🟡 iniciado/em validação | 🔴 pendente.
+
+
+## Alteração de escopo — 1.2.0
+- Removidos os módulos de Indicadores e Acompanhamento de Ações/Tratativas.
+- Mantidos o campo original Providências Tomadas, o status das interdições, registro de evidências, histórico e liberação formal.
