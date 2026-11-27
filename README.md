@@ -24,3 +24,8 @@ GitHub Actions executa o build debug e publica o artefato `SCL-INI-debug-apk`. A
 ## Regras de integridade
 
 A interdição só poderá ser liberada por evento formal de liberação, com identificação do responsável e histórico preservado. Concluir ação, vencer prazo ou anexar foto não libera uma interdição automaticamente.
+
+
+## Acompanhamento
+
+Consulte [`docs/STATUS-IMPLEMENTACAO.md`](docs/STATUS-IMPLEMENTACAO.md) para a lista de funcionalidades e o status de implementação.
