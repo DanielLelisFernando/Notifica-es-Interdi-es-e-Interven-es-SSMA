@@ -22,3 +22,8 @@
 - Ícone vetorial de barreira e alerta, integração inicial ao launcher.
 - Workflow habilitado para compilar a branch 1.2.0.
 - Pendentes nesta versão: revisão/validação de build, PDF paginado e fiel, anexos fotográficos robustos, ZIP, backup/restauração, pesquisa/filtragem, testes e validação física/offline.
+
+### Ajuste de escopo — 1.2.0
+- Removidos da tela inicial e navegação os módulos de Indicadores e Acompanhamento de Ações/Tratativas.
+- Removidos campos e comandos de registro de tratativa independente na tela de detalhe.
+- Mantidos cadastro, Providências Tomadas (campo do formulário original), status de interdição, evidências, histórico do registro e liberação formal.
