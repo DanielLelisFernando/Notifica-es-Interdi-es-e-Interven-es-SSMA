@@ -110,8 +110,6 @@ var releaseName by remember{mutableStateOf("")};var releaseManagement by remembe
  LaunchedEffect(r.id){dao.observeEvents(r.id).collectLatest{events=it}}
  Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)){
  Text("${r.type} • ${r.status}",fontSize=23.sp,fontWeight=FontWeight.Bold,color=Navy);Text("${r.date} ${r.time} • ${r.location}");Text("Emitente: ${r.fromPerson} / ${r.fromCompany}");Text("Destinatário: ${r.toPerson} / ${r.toCompany}");Text("Área: ${r.areaEquipmentActivity}");Text("Severidade: ${r.severity}");Text("Descrição: ${r.description}");Text("Recomendações: ${r.recommendations}");Text("Providências: ${r.actionsTaken}");Text("Prazo: ${r.deadline}")
- Spacer(Modifier.height(12.dp));Text("Acompanhamento",fontWeight=FontWeight.Bold,color=Navy)
- Field("Tratativa / registro de andamento",action){action=it};Field("Responsável pela tratativa",responsible){responsible=it};Field("Referência de evidência (texto/URI)",evidence){evidence=it}
  Button(onClick={photoPicker.launch(arrayOf("image/*"))},modifier=Modifier.fillMaxWidth()){Text("Anexar foto/evidência")}
  if(photoUri.isNotBlank())Text("Foto selecionada: $photoUri",fontSize=12.sp,color=Color.Gray)
  Text("Status",fontWeight=FontWeight.Bold);listOf("ATIVA","AGUARDANDO VERIFICAÇÃO").filter{r.type=="Interdição"}.forEach{FilterChip(status==it,{status=it; onUpdate(r.copy(status=it,updatedAt=System.currentTimeMillis()))},label={Text(it)})}
