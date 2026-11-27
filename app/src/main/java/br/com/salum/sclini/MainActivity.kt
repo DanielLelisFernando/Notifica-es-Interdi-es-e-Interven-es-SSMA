@@ -54,8 +54,6 @@ class MainActivity:ComponentActivity(){
  "form"->RecordForm(Modifier.padding(p)){record->scope.launch{dao.insert(record);dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),record.id,System.currentTimeMillis(),"CRIADO","Registro emitido",record.fromPerson));page="records"}}
  "active"->RecordList(Modifier.padding(p),"Interdições Ativas",active){selected=it;page="detail"}
  "records"->RecordList(Modifier.padding(p),"Registros",records){selected=it;page="detail"}
- "actions"->RecordList(Modifier.padding(p),"Ações / Tratativas",records.filter{it.status!="LIBERADA"}){selected=it;page="detail"}
- "indicators"->Indicators(Modifier.padding(p),records)
  "detail"->selected?.let{RecordDetail(Modifier.padding(p),it,dao){updated->scope.launch{dao.update(updated);dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),updated.id,System.currentTimeMillis(),updated.status,updated.status,updated.releaseName));selected=updated};page="detail"}}
  "help"->Help(Modifier.padding(p))
  "backup"->BackupScreen(Modifier.padding(p),records)
@@ -63,7 +61,7 @@ class MainActivity:ComponentActivity(){
  }
  }}
 }
-private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdições ativas";"records"->"Consultar registros";"actions"->"Tratativas";"indicators"->"Indicadores";"detail"->"Detalhes / histórico";else->"Instruções"}
+private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdições ativas";"records"->"Consultar registros";"detail"->"Detalhes / histórico";else->"Instruções"}
 @Composable private fun Home(m:Modifier,onNav:(String)->Unit){
  Column(m.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp),horizontalAlignment=Alignment.CenterHorizontally){
  Spacer(Modifier.height(14.dp));Icon(Icons.Default.Block,null,tint=Blue,modifier=Modifier.size(68.dp));Text("SALUM CONSTRUÇÕES",color=Navy,fontWeight=FontWeight.Bold);Text("SCL - INI",fontSize=30.sp,fontWeight=FontWeight.Bold,color=Navy);Text("Interdição • Notificação • Intervenção",color=Color.Gray)
@@ -71,8 +69,6 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  NavCard("Novo registro","Emitir formulário digital",Icons.Default.Add,Blue){onNav("form")}
  NavCard("Interdições ativas","Acompanhar bloqueios e liberação formal",Icons.Default.Block,Color(0xFFB54735)){onNav("active")}
  NavCard("Consultar registros","Histórico e pesquisa",Icons.Default.Search,Navy){onNav("records")}
- NavCard("Acompanhamento","Tratativas e prazos",Icons.Default.TaskAlt,Blue){onNav("actions")}
- NavCard("Indicadores","Visão gerencial local",Icons.Default.BarChart,Blue){onNav("indicators")}
  NavCard("Exportar dados","Gerar arquivo ZIP de registros",Icons.Default.Archive,Blue){onNav("backup")}
  NavCard("Instruções","Orientações e regras",Icons.Default.Info,Navy){onNav("help")}
  Spacer(Modifier.height(20.dp));Text("Versão 1.2.0",color=Color.Gray,fontSize=12.sp)
@@ -109,8 +105,8 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
 }
 @Composable private fun RecordDetail(modifier:Modifier,r:IniRecord,dao:RecordDao,onUpdate:(IniRecord)->Unit){
  val ctx= androidx.compose.ui.platform.LocalContext.current;val scope=rememberCoroutineScope()
- var action by remember{mutableStateOf("")};var responsible by remember{mutableStateOf("")};var evidence by remember{mutableStateOf("")};var releaseName by remember{mutableStateOf("")};var releaseManagement by remember{mutableStateOf("")};var releaseSign by remember{mutableStateOf("")};var status by remember{mutableStateOf(r.status)}
- var events by remember{mutableStateOf(emptyList<RecordEvent>())}\n var photoUri by remember{mutableStateOf("")}\n val photoPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{photoUri=it.toString();try{ctx.contentResolver.takePersistableUriPermission(it,Intent.FLAG_GRANT_READ_URI_PERMISSION)}catch(_:Exception){};scope.launch{dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),r.id,System.currentTimeMillis(),"EVIDÊNCIA/FOTO","Arquivo anexado: $it",responsible,it.toString()))}}}
+var releaseName by remember{mutableStateOf("")};var releaseManagement by remember{mutableStateOf("")};var releaseSign by remember{mutableStateOf("")};var status by remember{mutableStateOf(r.status)}
+ var events by remember{mutableStateOf(emptyList<RecordEvent>())}\n var photoUri by remember{mutableStateOf("")}\n val photoPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->uri?.let{photoUri=it.toString();try{ctx.contentResolver.takePersistableUriPermission(it,Intent.FLAG_GRANT_READ_URI_PERMISSION)}catch(_:Exception){};scope.launch{dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),r.id,System.currentTimeMillis(),"EVIDÊNCIA/FOTO","Arquivo anexado: $it","",it.toString()))}}}
  LaunchedEffect(r.id){dao.observeEvents(r.id).collectLatest{events=it}}
  Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)){
  Text("${r.type} • ${r.status}",fontSize=23.sp,fontWeight=FontWeight.Bold,color=Navy);Text("${r.date} ${r.time} • ${r.location}");Text("Emitente: ${r.fromPerson} / ${r.fromCompany}");Text("Destinatário: ${r.toPerson} / ${r.toCompany}");Text("Área: ${r.areaEquipmentActivity}");Text("Severidade: ${r.severity}");Text("Descrição: ${r.description}");Text("Recomendações: ${r.recommendations}");Text("Providências: ${r.actionsTaken}");Text("Prazo: ${r.deadline}")
@@ -118,11 +114,10 @@ private fun title(p:String)=when(p){"form"->"Novo registro";"active"->"Interdiç
  Field("Tratativa / registro de andamento",action){action=it};Field("Responsável pela tratativa",responsible){responsible=it};Field("Referência de evidência (texto/URI)",evidence){evidence=it}
  Button(onClick={photoPicker.launch(arrayOf("image/*"))},modifier=Modifier.fillMaxWidth()){Text("Anexar foto/evidência")}
  if(photoUri.isNotBlank())Text("Foto selecionada: $photoUri",fontSize=12.sp,color=Color.Gray)
- Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){Button(onClick={if(action.isNotBlank()){scope.launch{dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),r.id,System.currentTimeMillis(),"TRATATIVA",action,responsible,evidence))};onUpdate(r.copy(actionsTaken=action,status="EM TRATATIVA",updatedAt=System.currentTimeMillis()))}}){Text("Registrar tratativa")}}
- Text("Status",fontWeight=FontWeight.Bold);listOf("ATIVA","EM TRATATIVA","AGUARDANDO VERIFICAÇÃO").filter{r.type=="Interdição"}.forEach{FilterChip(status==it,{status=it; onUpdate(r.copy(status=it,updatedAt=System.currentTimeMillis()))},label={Text(it)})}
+ Text("Status",fontWeight=FontWeight.Bold);listOf("ATIVA","AGUARDANDO VERIFICAÇÃO").filter{r.type=="Interdição"}.forEach{FilterChip(status==it,{status=it; onUpdate(r.copy(status=it,updatedAt=System.currentTimeMillis()))},label={Text(it)})}
  if(r.type=="Interdição"&&r.status!="LIBERADA"){
  Text("Liberação formal",fontWeight=FontWeight.Bold,color=Color(0xFFB54735));Field("Nome do responsável pela liberação",releaseName){releaseName=it};Field("Gerência",releaseManagement){releaseManagement=it};Field("Registro de verificação / evidência",releaseSign){releaseSign=it}
- Button(onClick={if(releaseName.isNotBlank()&&releaseManagement.isNotBlank()&&releaseSign.isNotBlank()){val updated=r.copy(status="LIBERADA",releaseName=releaseName,releaseManagement=releaseManagement,releaseSignature=releaseSign,updatedAt=System.currentTimeMillis());scope.launch{dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),r.id,System.currentTimeMillis(),"LIBERAÇÃO FORMAL","Área liberada após verificação: "+releaseSign,releaseName,evidence))};onUpdate(updated)}},modifier=Modifier.fillMaxWidth()){Text("Confirmar liberação formal")};Text("A liberação exige nome, gerência e verificação/evidência. Não ocorre automaticamente.",fontSize=12.sp,color=Color.Gray)
+ Button(onClick={if(releaseName.isNotBlank()&&releaseManagement.isNotBlank()&&releaseSign.isNotBlank()){val updated=r.copy(status="LIBERADA",releaseName=releaseName,releaseManagement=releaseManagement,releaseSignature=releaseSign,updatedAt=System.currentTimeMillis());scope.launch{dao.insertEvent(RecordEvent(UUID.randomUUID().toString(),r.id,System.currentTimeMillis(),"LIBERAÇÃO FORMAL","Área liberada após verificação: "+releaseSign,releaseName,releaseSign))};onUpdate(updated)}},modifier=Modifier.fillMaxWidth()){Text("Confirmar liberação formal")};Text("A liberação exige nome, gerência e verificação/evidência. Não ocorre automaticamente.",fontSize=12.sp,color=Color.Gray)
  }
  Spacer(Modifier.height(10.dp));Text("Histórico",fontWeight=FontWeight.Bold,color=Navy);events.forEach{Text("• ${SimpleDateFormat("dd/MM/yyyy HH:mm",Locale("pt","BR")).format(Date(it.timestamp))} — ${it.eventType}: ${it.description} (${it.responsible})",Modifier.padding(vertical=4.dp))}
  Button(onClick={exportPdf(ctx,r,events)},modifier=Modifier.fillMaxWidth()){Text("Exportar PDF / compartilhar")}
@@ -138,12 +133,8 @@ private fun exportPdf(context:android.content.Context,r:IniRecord,events:List<Re
  val intent=Intent(Intent.ACTION_SEND).apply{type="application/pdf";putExtra(Intent.EXTRA_STREAM,uri);addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)}
  context.startActivity(Intent.createChooser(intent,"Compartilhar PDF"))
 }
-@Composable private fun Indicators(modifier:Modifier,records:List<IniRecord>){
- Column(modifier.fillMaxSize().padding(18.dp)){Text("Indicadores locais",fontSize=24.sp,fontWeight=FontWeight.Bold,color=Navy);val total=records.size;val interd=records.count{it.type=="Interdição"};val active=records.count{it.type=="Interdição"&&it.status!="LIBERADA"};val released=records.count{it.status=="LIBERADA"};val not=records.count{it.type=="Notificação"};val intervention=records.count{it.type=="Intervenção"}
- listOf("Total de registros" to total,"Interdições emitidas" to interd,"Interdições ativas" to active,"Interdições liberadas" to released,"Notificações" to not,"Intervenções" to intervention).forEach{(label,value)->Card(Modifier.fillMaxWidth().padding(vertical=5.dp)){Row(Modifier.padding(18.dp),horizontalArrangement=Arrangement.SpaceBetween){Text(label);Text(value.toString(),fontWeight=FontWeight.Bold,color=Blue)}}}
- }}
 @Composable private fun Help(modifier:Modifier){
- Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)){Text("Instruções de uso",fontSize=24.sp,fontWeight=FontWeight.Bold,color=Navy);Text("• O app funciona localmente, sem necessidade de conexão.\n• Registre com clareza local, condição, recomendações e prazo.\n• Acompanhe tratativas no registro.\n• Interdições permanecem ativas até liberação formal.\n• A liberação requer responsável, gerência e evidência/verificação.\n• O histórico registra eventos de acompanhamento.\n• Exporte PDF para compartilhamento.\n• Campos adicionais digitais não substituem requisitos/procedimentos corporativos.")}}
+ Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(18.dp)){Text("Instruções de uso",fontSize=24.sp,fontWeight=FontWeight.Bold,color=Navy);Text("• O app funciona localmente, sem necessidade de conexão.\n• Registre com clareza local, condição, recomendações e prazo.\n• Interdições permanecem ativas até liberação formal.\n• A liberação requer responsável, gerência e evidência/verificação.\n• O histórico registra eventos relevantes, incluindo evidências e liberações.\n• Exporte PDF para compartilhamento.\n• Campos adicionais digitais não substituem requisitos/procedimentos corporativos.")}}
 @Composable private fun BackupScreen(modifier:Modifier,records:List<IniRecord>){
  val context=androidx.compose.ui.platform.LocalContext.current
  var msg by remember{mutableStateOf("")}
